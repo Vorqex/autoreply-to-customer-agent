@@ -1,8 +1,8 @@
 'use client'
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import api from '@/lib/api'
-import type { Review, Reply, PaginatedResponse, ApiResponse } from '@/types'
+import * as api from '@/lib/api'
+import type { Review, Reply, PaginatedResponse } from '@/types'
 
 interface ReviewFilters {
   page?: number
@@ -21,20 +21,14 @@ interface ReviewFilters {
 export function useReviews(filters: ReviewFilters = {}) {
   return useQuery<PaginatedResponse<Review>>({
     queryKey: ['reviews', filters],
-    queryFn: async () => {
-      const { data } = await api.get('/reviews', { params: filters })
-      return data
-    },
+    queryFn: () => api.getReviews(filters),
   })
 }
 
 export function useReview(id: string) {
   return useQuery<Review>({
     queryKey: ['review', id],
-    queryFn: async () => {
-      const { data } = await api.get(`/reviews/${id}`)
-      return data
-    },
+    queryFn: () => api.getReview(id),
     enabled: !!id,
   })
 }
@@ -42,10 +36,7 @@ export function useReview(id: string) {
 export function useGenerateReply() {
   const queryClient = useQueryClient()
   return useMutation<Reply, Error, string>({
-    mutationFn: async (reviewId: string) => {
-      const { data } = await api.post(`/reviews/${reviewId}/generate-reply`)
-      return data
-    },
+    mutationFn: (reviewId: string) => api.generateReply(reviewId),
     onSuccess: (_data, reviewId) => {
       queryClient.invalidateQueries({ queryKey: ['review', reviewId] })
       queryClient.invalidateQueries({ queryKey: ['reviews'] })
@@ -56,12 +47,8 @@ export function useGenerateReply() {
 export function useApproveReply() {
   const queryClient = useQueryClient()
   return useMutation<Reply, Error, string>({
-    mutationFn: async (reviewId: string) => {
-      const { data } = await api.post(`/reviews/${reviewId}/approve-reply`)
-      return data
-    },
-    onSuccess: (_data, reviewId) => {
-      queryClient.invalidateQueries({ queryKey: ['review', reviewId] })
+    mutationFn: (replyId: string) => api.approveReply(replyId),
+    onSuccess: (_data, replyId) => {
       queryClient.invalidateQueries({ queryKey: ['reviews'] })
     },
   })
@@ -70,12 +57,8 @@ export function useApproveReply() {
 export function useRejectReply() {
   const queryClient = useQueryClient()
   return useMutation<Reply, Error, string>({
-    mutationFn: async (reviewId: string) => {
-      const { data } = await api.post(`/reviews/${reviewId}/reject-reply`)
-      return data
-    },
-    onSuccess: (_data, reviewId) => {
-      queryClient.invalidateQueries({ queryKey: ['review', reviewId] })
+    mutationFn: (replyId: string) => api.rejectReply(replyId),
+    onSuccess: (_data, replyId) => {
       queryClient.invalidateQueries({ queryKey: ['reviews'] })
     },
   })
@@ -84,12 +67,8 @@ export function useRejectReply() {
 export function usePublishReply() {
   const queryClient = useQueryClient()
   return useMutation<Reply, Error, string>({
-    mutationFn: async (reviewId: string) => {
-      const { data } = await api.post(`/reviews/${reviewId}/publish-reply`)
-      return data
-    },
-    onSuccess: (_data, reviewId) => {
-      queryClient.invalidateQueries({ queryKey: ['review', reviewId] })
+    mutationFn: (replyId: string) => api.publishReply(replyId),
+    onSuccess: (_data, replyId) => {
       queryClient.invalidateQueries({ queryKey: ['reviews'] })
     },
   })
@@ -98,12 +77,8 @@ export function usePublishReply() {
 export function useRegenerateReply() {
   const queryClient = useQueryClient()
   return useMutation<Reply, Error, string>({
-    mutationFn: async (reviewId: string) => {
-      const { data } = await api.post(`/reviews/${reviewId}/regenerate-reply`)
-      return data
-    },
-    onSuccess: (_data, reviewId) => {
-      queryClient.invalidateQueries({ queryKey: ['review', reviewId] })
+    mutationFn: (replyId: string) => api.regenerateReply(replyId),
+    onSuccess: (_data, replyId) => {
       queryClient.invalidateQueries({ queryKey: ['reviews'] })
     },
   })
@@ -112,13 +87,12 @@ export function useRegenerateReply() {
 export function useFlagReview() {
   const queryClient = useQueryClient()
   return useMutation<Review, Error, { reviewId: string; reason?: string }>({
-    mutationFn: async ({ reviewId, reason }) => {
-      const { data } = await api.patch(`/reviews/${reviewId}/flag`, { reason })
-      return data
-    },
+    mutationFn: ({ reviewId, reason }) => api.flagReview(reviewId, reason || ''),
     onSuccess: (_data, { reviewId }) => {
       queryClient.invalidateQueries({ queryKey: ['review', reviewId] })
       queryClient.invalidateQueries({ queryKey: ['reviews'] })
     },
   })
 }
+
+export { type ReviewFilters }

@@ -14,13 +14,29 @@ import { cn } from '@/lib/utils'
 import * as api from '@/lib/api'
 import type { BrandVoice } from '@/types'
 import { toast } from 'sonner'
+import { PageTransition } from '@/components/layout/page-transition'
 import {
   Save,
   RotateCcw,
   Eye,
   Mic,
   ChevronDown,
+  Bot,
 } from 'lucide-react'
+
+const industryPresets = [
+  { label: 'Healthcare', value: 'healthcare' },
+  { label: 'Hospitality', value: 'hospitality' },
+  { label: 'SaaS', value: 'saas' },
+  { label: 'E-commerce', value: 'ecommerce' },
+]
+
+const industryToneMap: Record<string, { tone: string; style: string }> = {
+  healthcare: { tone: 'healthcare', style: 'professional' },
+  hospitality: { tone: 'hospitality', style: 'conversational' },
+  saas: { tone: 'professional', style: 'concise' },
+  ecommerce: { tone: 'friendly', style: 'persuasive' },
+}
 
 const writingStyles = [
   { value: 'descriptive', label: 'Descriptive' },
@@ -100,7 +116,14 @@ export default function BrandVoicePage() {
     mutationFn: (data: Partial<BrandVoice>) => api.updateBrandVoice(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['brand-voice'] })
-      toast.success('Brand voice updated')
+      toast.success('Brand voice saved', {
+        description: 'Changes saved successfully',
+        action: {
+          label: 'Undo',
+          onClick: () => handleReset(),
+        },
+        duration: 5000,
+      })
     },
     onError: () => toast.error('Failed to save brand voice'),
   })
@@ -140,6 +163,7 @@ export default function BrandVoicePage() {
   }
 
   return (
+    <PageTransition>
     <motion.div
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
@@ -169,6 +193,35 @@ export default function BrandVoicePage() {
               <CardTitle className="text-base">Company Information</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
+              <div>
+                <label className="mb-1.5 block text-sm font-medium text-neutral-700 dark:text-neutral-300">
+                  Industry Presets
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  {industryPresets.map((preset) => (
+                    <button
+                      key={preset.value}
+                      type="button"
+                      onClick={() => {
+                        update('industry', preset.label)
+                        const mapped = industryToneMap[preset.value]
+                        if (mapped) {
+                          update('tone', mapped.tone)
+                          update('writing_style', mapped.style)
+                        }
+                      }}
+                      className={cn(
+                        'rounded-xl border px-3 py-1.5 text-xs font-medium transition-all',
+                        form.industry === preset.label
+                          ? 'border-indigo-500 bg-indigo-50 text-indigo-700 dark:border-indigo-400 dark:bg-indigo-950/50 dark:text-indigo-300'
+                          : 'border-input hover:bg-accent hover:border-foreground/20'
+                      )}
+                    >
+                      {preset.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
               <div className="grid gap-4 sm:grid-cols-2">
                 <Input
                   label="Company Name"
@@ -192,7 +245,13 @@ export default function BrandVoicePage() {
                   placeholder="Describe your business..."
                   value={form.business_description || ''}
                   onChange={(e) => update('business_description', e.target.value)}
+                  maxLength={500}
                 />
+                <div className="mt-1 flex justify-end">
+                  <span className="text-xs text-muted-foreground">
+                    {(form.business_description || '').length}/500
+                  </span>
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -377,7 +436,13 @@ export default function BrandVoicePage() {
                   placeholder="Add any specific instructions for the AI..."
                   value={form.custom_instructions || ''}
                   onChange={(e) => update('custom_instructions', e.target.value)}
+                  maxLength={1000}
                 />
+                <div className="mt-1 flex justify-end">
+                  <span className="text-xs text-muted-foreground">
+                    {(form.custom_instructions || '').length}/1000
+                  </span>
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -430,5 +495,6 @@ export default function BrandVoicePage() {
         </div>
       </div>
     </motion.div>
+    </PageTransition>
   )
 }

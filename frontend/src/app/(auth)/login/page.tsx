@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useForm } from 'react-hook-form'
@@ -10,7 +10,8 @@ import { motion } from 'framer-motion'
 import { useAuthStore } from '@/stores/auth-store'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Mail, Lock, Eye, EyeOff } from 'lucide-react'
+import { PageTransition } from '@/components/layout/page-transition'
+import { Mail, Lock, Eye, EyeOff, Chrome, Github } from 'lucide-react'
 import { toast } from 'sonner'
 
 const loginSchema = z.object({
@@ -38,6 +39,7 @@ export default function LoginPage() {
   const login = useAuthStore((s) => s.login)
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
+  const emailRef = useRef<HTMLInputElement>(null)
 
   const {
     register,
@@ -61,69 +63,110 @@ export default function LoginPage() {
     }
   }
 
+  const handleKeyDown = useCallback((e: KeyboardEvent) => {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+      const form = document.getElementById('login-form') as HTMLFormElement
+      form?.requestSubmit()
+    }
+  }, [])
+
+  useEffect(() => {
+    emailRef.current?.focus()
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [handleKeyDown])
+
   return (
-    <motion.div
-      variants={stagger}
-      initial="hidden"
-      animate="show"
-      className="rounded-2xl border border-white/20 bg-white/90 p-8 shadow-2xl backdrop-blur-xl dark:bg-neutral-900/90"
-    >
-      <motion.div variants={item} className="mb-6 text-center">
-        <h2 className="text-2xl font-bold text-neutral-900 dark:text-white">Welcome back</h2>
-        <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">Sign in to your account</p>
-      </motion.div>
-
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-        <motion.div variants={item}>
-          <Input
-            label="Email"
-            type="email"
-            placeholder="you@company.com"
-            leftIcon={<Mail className="h-4 w-4" />}
-            error={errors.email?.message}
-            {...register('email')}
-          />
+    <PageTransition>
+      <motion.div
+        variants={stagger}
+        initial="hidden"
+        animate="show"
+        className="rounded-2xl border border-white/20 bg-white/90 p-8 shadow-2xl backdrop-blur-xl dark:bg-neutral-900/90"
+      >
+        <motion.div variants={item} className="mb-6 text-center">
+          <h2 className="text-2xl font-bold text-neutral-900 dark:text-white">Welcome back</h2>
+          <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">Sign in to your account</p>
         </motion.div>
 
-        <motion.div variants={item}>
-          <Input
-            label="Password"
-            type={showPassword ? 'text' : 'password'}
-            placeholder="••••••••"
-            leftIcon={<Lock className="h-4 w-4" />}
-            rightIcon={
-              <button type="button" onClick={() => setShowPassword(!showPassword)} className="text-neutral-400 hover:text-neutral-600">
-                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-              </button>
-            }
-            error={errors.password?.message}
-            {...register('password')}
-          />
+        <form id="login-form" onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+          <motion.div variants={item}>
+            <Input
+              label="Email"
+              type="email"
+              placeholder="you@company.com"
+              leftIcon={<Mail className="h-4 w-4" />}
+              error={errors.email?.message}
+              {...register('email')}
+              ref={(e) => { register('email').ref(e); emailRef.current = e }}
+            />
+          </motion.div>
+
+          <motion.div variants={item}>
+            <Input
+              label="Password"
+              type={showPassword ? 'text' : 'password'}
+              placeholder="••••••••"
+              leftIcon={<Lock className="h-4 w-4" />}
+              rightIcon={
+                <button type="button" onClick={() => setShowPassword(!showPassword)} className="text-neutral-400 hover:text-neutral-600" tabIndex={-1}>
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              }
+              error={errors.password?.message}
+              {...register('password')}
+            />
+          </motion.div>
+
+          <motion.div variants={item} className="flex items-center justify-between">
+            <label className="flex items-center gap-2 text-sm text-neutral-600 dark:text-neutral-400 cursor-pointer">
+              <input type="checkbox" className="rounded border-neutral-300 text-indigo-600 focus:ring-indigo-500" />
+              Remember me
+            </label>
+            <Link href="/forgot-password" className="text-sm font-medium text-indigo-600 hover:text-indigo-500 dark:text-indigo-400">
+              Forgot password?
+            </Link>
+          </motion.div>
+
+          <motion.div variants={item}>
+            <Button type="submit" loading={loading} className="w-full" size="lg">
+              Sign in
+            </Button>
+          </motion.div>
+        </form>
+
+        <motion.div variants={item} className="mt-6">
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center">
+              <span className="w-full border-t" />
+            </div>
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="bg-white px-2 text-neutral-400 dark:bg-neutral-900">or continue with</span>
+            </div>
+          </div>
+          <div className="mt-4 grid grid-cols-2 gap-3">
+            <Button variant="outline" size="sm" className="w-full" onClick={() => toast.info('Google login coming soon')}>
+              <Chrome className="mr-2 h-4 w-4" />
+              Google
+            </Button>
+            <Button variant="outline" size="sm" className="w-full" onClick={() => toast.info('GitHub login coming soon')}>
+              <Github className="mr-2 h-4 w-4" />
+              GitHub
+            </Button>
+          </div>
         </motion.div>
 
-        <motion.div variants={item} className="flex items-center justify-between">
-          <label className="flex items-center gap-2 text-sm text-neutral-600 dark:text-neutral-400">
-            <input type="checkbox" className="rounded border-neutral-300 text-indigo-600 focus:ring-indigo-500" />
-            Remember me
-          </label>
-          <Link href="/forgot-password" className="text-sm font-medium text-indigo-600 hover:text-indigo-500 dark:text-indigo-400">
-            Forgot password?
+        <motion.p variants={item} className="mt-6 text-center text-sm text-neutral-500 dark:text-neutral-400">
+          Don't have an account?{' '}
+          <Link href="/signup" className="font-medium text-indigo-600 hover:text-indigo-500 dark:text-indigo-400">
+            Sign up
           </Link>
-        </motion.div>
+        </motion.p>
 
-        <motion.div variants={item}>
-          <Button type="submit" loading={loading} className="w-full" size="lg">
-            Sign in
-          </Button>
-        </motion.div>
-      </form>
-
-      <motion.p variants={item} className="mt-6 text-center text-sm text-neutral-500 dark:text-neutral-400">
-        Don't have an account?{' '}
-        <Link href="/signup" className="font-medium text-indigo-600 hover:text-indigo-500 dark:text-indigo-400">
-          Sign up
-        </Link>
-      </motion.p>
-    </motion.div>
+        <motion.p variants={item} className="mt-3 text-center text-[10px] text-neutral-400 dark:text-neutral-500">
+          Press <kbd className="rounded border bg-muted px-1 py-0.5 text-[10px]">Ctrl</kbd>+<kbd className="rounded border bg-muted px-1 py-0.5 text-[10px]">Enter</kbd> to submit
+        </motion.p>
+      </motion.div>
+    </PageTransition>
   )
 }

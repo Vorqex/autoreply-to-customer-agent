@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import secrets
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from uuid import UUID, uuid4
 
 import pyotp
@@ -211,5 +211,3 @@ class AuthService:
             "token_type": "bearer",
         }
 
-
-from datetime import timedelta

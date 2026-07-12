@@ -1,11 +1,10 @@
 'use client'
 
 import { useState } from 'react'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Progress } from '@/components/ui/progress'
 import { cn, formatRelativeTime, sentimentColor, riskColor } from '@/lib/utils'
 import type { Review } from '@/types'
 import {
@@ -16,6 +15,9 @@ import {
   ChevronDown,
   ChevronUp,
   MessageSquare,
+  CheckCircle2,
+  Clock,
+  Send,
 } from 'lucide-react'
 
 interface ReviewCardProps {
@@ -24,6 +26,7 @@ interface ReviewCardProps {
   onFlag?: (id: string) => void
   onView?: (id: string) => void
   loading?: boolean
+  selected?: boolean
 }
 
 const platformIcons: Record<string, string> = {
@@ -40,22 +43,75 @@ const platformIcons: Record<string, string> = {
 }
 
 const platformColors: Record<string, string> = {
-  google: 'bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300',
-  facebook: 'bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300',
-  trustpilot: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300',
-  yelp: 'bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300',
-  shopify: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300',
-  amazon: 'bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300',
+  google: 'bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300 border-blue-200 dark:border-blue-800',
+  facebook: 'bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800',
+  trustpilot: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800',
+  yelp: 'bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300 border-red-200 dark:border-red-800',
+  shopify: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800',
+  amazon: 'bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300 border-amber-200 dark:border-amber-800',
 }
 
-export function ReviewCard({ review, onGenerate, onFlag, onView, loading }: ReviewCardProps) {
+const platformBorders: Record<string, string> = {
+  google: 'border-l-blue-500',
+  facebook: 'border-l-indigo-500',
+  trustpilot: 'border-l-emerald-500',
+  yelp: 'border-l-red-500',
+  shopify: 'border-l-emerald-500',
+  amazon: 'border-l-amber-500',
+}
+
+function ConfidenceRadial({ value, size = 48 }: { value: number; size?: number }) {
+  const radius = size / 2 - 4
+  const circumference = 2 * Math.PI * radius
+  const offset = circumference - (value / 100) * circumference
+  const color = value >= 80 ? '#10B981' : value >= 60 ? '#F59E0B' : '#EF4444'
+
+  return (
+    <div className="relative inline-flex items-center justify-center" style={{ width: size, height: size }}>
+      <svg width={size} height={size} className="-rotate-90">
+        <circle cx={size / 2} cy={size / 2} r={radius} fill="none" stroke="hsl(var(--muted))" strokeWidth={3} />
+        <motion.circle
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          fill="none"
+          stroke={color}
+          strokeWidth={3}
+          strokeLinecap="round"
+          strokeDasharray={circumference}
+          initial={{ strokeDashoffset: circumference }}
+          animate={{ strokeDashoffset: offset }}
+          transition={{ duration: 1, ease: 'easeOut' }}
+        />
+      </svg>
+      <span className="absolute text-[10px] font-semibold tabular-nums" style={{ color }}>
+        {Math.round(value)}%
+      </span>
+    </div>
+  )
+}
+
+export function ReviewCard({ review, onGenerate, onFlag, onView, loading, selected }: ReviewCardProps) {
   const [expanded, setExpanded] = useState(false)
   const [showActions, setShowActions] = useState(false)
+  const [focused, setFocused] = useState(false)
 
   const r = review
   const MAX_LENGTH = 150
   const needsTruncation = r.review_text.length > MAX_LENGTH
   const displayText = expanded ? r.review_text : r.review_text.slice(0, MAX_LENGTH)
+
+  const getReplyStatus = () => {
+    if (!r.reply) return { label: 'Pending', variant: 'warning' as const, icon: Clock, color: 'text-amber-500' }
+    if (r.reply.status === 'published') return { label: 'Published', variant: 'success' as const, icon: CheckCircle2, color: 'text-emerald-500' }
+    if (r.reply.status === 'draft') return { label: 'Draft', variant: 'outline' as const, icon: MessageSquare, color: 'text-muted-foreground' }
+    return { label: 'Pending', variant: 'warning' as const, icon: Send, color: 'text-amber-500' }
+  }
+
+  const status = getReplyStatus()
+  const StatusIcon = status.icon
+
+  const confidencePct = Math.round(r.sentiment_confidence * 100)
 
   return (
     <motion.div
@@ -67,15 +123,23 @@ export function ReviewCard({ review, onGenerate, onFlag, onView, loading }: Revi
     >
       <Card
         glass
-        className="group relative transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5"
+        tabIndex={0}
+        onFocus={() => setFocused(true)}
+        onBlur={() => setFocused(false)}
+        className={cn(
+          'group relative transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5 border-l-4 outline-none',
+          platformBorders[r.platform] || 'border-l-border',
+          selected && 'ring-2 ring-primary ring-offset-2',
+          focused && 'ring-2 ring-indigo-400 ring-offset-2'
+        )}
       >
         <CardContent className="p-5">
           <div className="flex items-start justify-between">
             <div className="flex items-center gap-2">
               <div
                 className={cn(
-                  'flex h-8 w-8 items-center justify-center rounded-lg text-xs font-bold',
-                  platformColors[r.platform] || 'bg-muted text-muted-foreground'
+                  'flex h-8 w-8 items-center justify-center rounded-lg text-xs font-bold border',
+                  platformColors[r.platform] || 'bg-muted text-muted-foreground border-border'
                 )}
               >
                 {platformIcons[r.platform] || r.platform.slice(0, 2).toUpperCase()}
@@ -87,7 +151,7 @@ export function ReviewCard({ review, onGenerate, onFlag, onView, loading }: Revi
                 </p>
               </div>
             </div>
-            <div className="flex items-center gap-0.5">
+            <div className="flex items-center gap-0.5" aria-label={`${r.rating} out of 5 stars`}>
               {Array.from({ length: 5 }).map((_, i) => (
                 <Star
                   key={i}
@@ -107,31 +171,38 @@ export function ReviewCard({ review, onGenerate, onFlag, onView, loading }: Revi
               {displayText}
               {!expanded && needsTruncation && '...'}
             </p>
-            {needsTruncation && (
-              <button
-                onClick={() => setExpanded(!expanded)}
-                className="mt-1 flex items-center gap-1 text-xs text-primary hover:text-primary/80 transition-colors"
-              >
-                {expanded ? (
-                  <>
-                    Show less <ChevronUp className="h-3 w-3" />
-                  </>
-                ) : (
-                  <>
-                    Show more <ChevronDown className="h-3 w-3" />
-                  </>
-                )}
-              </button>
-            )}
+            <AnimatePresence>
+              {needsTruncation && (
+                <motion.button
+                  key="expand-btn"
+                  initial={{ opacity: 0, y: -4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -4 }}
+                  onClick={() => setExpanded(!expanded)}
+                  className="mt-1 flex items-center gap-1 text-xs text-primary hover:text-primary/80 transition-colors"
+                  aria-label={expanded ? 'Show less' : 'Show more'}
+                >
+                  <motion.span
+                    animate={{ rotate: expanded ? 180 : 0 }}
+                    transition={{ duration: 0.2 }}
+                    className="flex items-center gap-1"
+                  >
+                    {expanded ? 'Show less' : 'Show more'}
+                    <ChevronDown className="h-3 w-3" />
+                  </motion.span>
+                </motion.button>
+              )}
+            </AnimatePresence>
           </div>
 
           <div className="mt-3 flex flex-wrap items-center gap-2">
-            <Badge className={cn('text-[10px]', sentimentColor(r.sentiment))}>
+            <Badge className={cn('text-[10px]', sentimentColor(r.sentiment))} aria-label={`Sentiment: ${r.sentiment}`}>
               {r.sentiment.replace('_', ' ')}
             </Badge>
             <Badge
               variant="outline"
               className={cn('text-[10px] border', riskColor(r.risk_level))}
+              aria-label={`Risk level: ${r.risk_level}`}
             >
               {r.risk_level}
             </Badge>
@@ -142,31 +213,34 @@ export function ReviewCard({ review, onGenerate, onFlag, onView, loading }: Revi
             )}
           </div>
 
-          {r.sentiment_confidence > 0 && (
-            <div className="mt-3">
-              <div className="flex items-center justify-between text-xs text-muted-foreground">
-                <span>Confidence</span>
-                <span>{Math.round(r.sentiment_confidence * 100)}%</span>
+          <div className="mt-3 flex items-center justify-between">
+            {r.sentiment_confidence > 0 && (
+              <div className="flex items-center gap-2">
+                <ConfidenceRadial value={confidencePct} size={36} />
+                <span className="text-[10px] text-muted-foreground">confidence</span>
               </div>
-              <Progress
-                value={Math.round(r.sentiment_confidence * 100)}
-                className="mt-1 h-1.5"
+            )}
+            <div className={cn('flex items-center gap-1', !r.sentiment_confidence && 'ml-auto')}>
+              <StatusIcon className={cn('h-3 w-3', status.color)} />
+              <Badge variant={status.variant} className="text-[10px]" aria-label={`Reply status: ${status.label}`}>
+                {status.label}
+              </Badge>
+            </div>
+          </div>
+
+          {r.sentiment_confidence > 0 && (
+            <div className="mt-2 h-1 w-full rounded-full bg-muted overflow-hidden">
+              <motion.div
+                initial={{ width: 0 }}
+                animate={{ width: `${confidencePct}%` }}
+                transition={{ duration: 0.8, ease: 'easeOut' }}
+                className={cn(
+                  'h-full rounded-full',
+                  confidencePct >= 80 ? 'bg-emerald-500' : confidencePct >= 60 ? 'bg-amber-500' : 'bg-red-500'
+                )}
               />
             </div>
           )}
-
-          <div className="mt-3 flex items-center justify-between text-xs text-muted-foreground">
-            {r.reply ? (
-              <Badge variant="success" className="text-[10px]">
-                <MessageSquare className="mr-0.5 h-2.5 w-2.5" />
-                Replied
-              </Badge>
-            ) : (
-              <Badge variant="warning" className="text-[10px]">
-                Pending
-              </Badge>
-            )}
-          </div>
 
           <motion.div
             initial={false}
@@ -184,6 +258,7 @@ export function ReviewCard({ review, onGenerate, onFlag, onView, loading }: Revi
                 className="h-8 text-xs"
                 onClick={() => onGenerate?.(r.id)}
                 disabled={loading}
+                aria-label="Generate AI reply"
               >
                 <Bot className="mr-1 h-3.5 w-3.5" />
                 Generate Reply
@@ -194,15 +269,17 @@ export function ReviewCard({ review, onGenerate, onFlag, onView, loading }: Revi
               variant="outline"
               className="h-8 text-xs"
               onClick={() => onView?.(r.id)}
+              aria-label="View details"
             >
               <Eye className="mr-1 h-3.5 w-3.5" />
-              View Details
+              Details
             </Button>
             <Button
               size="sm"
               variant="ghost"
               className={cn('h-8 text-xs', r.is_flagged && 'text-red-500')}
               onClick={() => onFlag?.(r.id)}
+              aria-label={r.is_flagged ? 'Unflag review' : 'Flag review'}
             >
               <Flag className="mr-1 h-3.5 w-3.5" />
               {r.is_flagged ? 'Flagged' : 'Flag'}

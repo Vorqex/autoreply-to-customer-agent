@@ -23,12 +23,12 @@ class Base(DeclarativeBase):
     metadata = metadata
 
 
+_is_sqlite = str(settings.DATABASE_URL).startswith("sqlite")
 engine = create_async_engine(
     str(settings.DATABASE_URL),
     echo=settings.DEBUG,
     pool_pre_ping=True,
-    pool_size=20,
-    max_overflow=10,
+    **({} if _is_sqlite else {"pool_size": 20, "max_overflow": 10}),
 )
 
 AsyncSessionLocal = async_sessionmaker(

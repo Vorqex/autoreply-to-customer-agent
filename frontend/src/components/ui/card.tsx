@@ -2,15 +2,16 @@
 
 import { forwardRef, HTMLAttributes } from 'react'
 import { cn } from '@/lib/utils'
-import { motion } from 'framer-motion'
 
-const Card = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement> & { glass?: boolean }>(
-  ({ className, glass, ...props }, ref) => (
+const Card = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement> & { glass?: boolean; hover?: boolean; gradient?: boolean }>(
+  ({ className, glass, hover, gradient, ...props }, ref) => (
     <div
       ref={ref}
       className={cn(
-        'rounded-2xl border bg-card text-card-foreground shadow-sm',
+        'rounded-2xl border bg-card text-card-foreground shadow-sm transition-all duration-300',
         glass && 'glass-card',
+        hover && 'hover:shadow-lg hover:-translate-y-0.5 cursor-pointer',
+        gradient && 'bg-gradient-to-br from-card via-card to-primary/5 border-primary/20',
         className
       )}
       {...props}

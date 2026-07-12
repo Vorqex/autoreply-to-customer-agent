@@ -63,10 +63,10 @@ class PlatformService:
     async def _test_connection(self, connection: PlatformConnection) -> bool:
         try:
             adapter = self._get_adapter(connection.platform)
-            if adapter and hasattr(adapter, "test_connection"):
-                return await adapter.test_connection(connection)
+            if adapter and hasattr(adapter, "verify_connection"):
+                return await adapter.verify_connection(connection)
             return True
-        except ImportError:
+        except (ValueError, ImportError):
             logger.info("No adapter found for %s, skipping test", connection.platform)
             return True
 
@@ -94,11 +94,19 @@ class PlatformService:
 
     def _get_adapter(self, platform: str) -> Any:
         try:
-            module_path = f"app.adapters.{platform}_adapter"
-            module = importlib.import_module(module_path)
-            return module
-        except ModuleNotFoundError:
-            return None
+            from app.adapters.factory import get_adapter
+            return get_adapter(platform)
+        except (ValueError, ImportError):
+            try:
+                module_path = f"app.adapters.{platform}_adapter"
+                module = importlib.import_module(module_path)
+                for name in dir(module):
+                    obj = getattr(module, name)
+                    if isinstance(obj, type) and name.endswith("Adapter"):
+                        return obj(self.config)
+                return None
+            except ModuleNotFoundError:
+                return None
 
     async def publish_to_platform(
         self,
@@ -123,7 +131,7 @@ class PlatformService:
             try:
                 platform_reply_id = await adapter.post_reply(
                     connection=connection,
-                    review=review,
+                    review_id=str(review.id) if review else "",
                     reply_text=reply_text,
                 )
                 connection.last_sync_at = now()

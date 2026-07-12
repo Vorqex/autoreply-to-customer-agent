@@ -22,15 +22,15 @@ class BasePlatformAdapter(ABC):
     def platform_name(self) -> str: ...
 
     @abstractmethod
-    async def verify_connection(self, credentials: dict) -> bool:
-        """Test if credentials are valid"""
+    async def verify_connection(self, connection: Any) -> bool:
+        """Test if connection is valid"""
 
     @abstractmethod
-    async def fetch_reviews(self, credentials: dict, since: str | None = None) -> list[dict]:
+    async def fetch_reviews(self, connection: Any, since: str | None = None) -> list[dict]:
         """Pull recent reviews from platform"""
 
     @abstractmethod
-    async def post_reply(self, credentials: dict, review_id: str, reply_text: str) -> dict:
+    async def post_reply(self, connection: Any, review_id: str, reply_text: str) -> dict:
         """Post a reply to a review"""
 
     @abstractmethod

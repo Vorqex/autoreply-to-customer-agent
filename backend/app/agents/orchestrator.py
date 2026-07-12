@@ -1,13 +1,14 @@
 from __future__ import annotations
 
+import asyncio
 import logging
+import time
 from typing import Any, NamedTuple, Optional
 from uuid import UUID, uuid4
 
 from openai import AsyncOpenAI
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
 
 from app.core.config import settings
 from app.models.reply import Reply
@@ -26,9 +27,13 @@ from app.agents.quality_evaluation_agent import QualityEvaluationAgent
 from app.services.brand_service import BrandVoiceService
 from app.services.knowledge_service import KnowledgeService
 from app.services.audit_service import AuditService
+from app.services.workflow_service import ApprovalWorkflowService
 from app.utils.helpers import calculate_cost, now
 
 logger = logging.getLogger(__name__)
+
+AGENT_TIMEOUT_SECONDS = 30
+MAX_RETRIES = 2
 
 
 class OrchestrationResult(NamedTuple):
@@ -54,6 +59,7 @@ class AIOrchestrator:
         self.safety_guardrail = SafetyGuardrailAgent(self.openai_client)
         self.quality_evaluator = QualityEvaluationAgent(self.openai_client)
         self.audit_service = AuditService(db)
+        self.workflow_service = ApprovalWorkflowService(db)
 
     async def _load_entities(
         self, business_id: UUID, review_id: UUID
@@ -93,9 +99,44 @@ class AIOrchestrator:
             total_tokens=total_tokens,
             cost=cost,
             duration_ms=duration_ms,
-            metadata={"source": "orchestrator"},
+            extra_data={"source": "orchestrator"},
         )
         self.db.add(usage)
+
+    async def _run_agent_step(
+        self, step_name: str, agent_fn, *args, max_retries: int = MAX_RETRIES, **kwargs
+    ) -> dict[str, Any]:
+        last_error = None
+        for attempt in range(1 + max_retries):
+            try:
+                step_start = time.monotonic()
+                result = await asyncio.wait_for(
+                    agent_fn(*args, **kwargs), timeout=AGENT_TIMEOUT_SECONDS
+                )
+                duration_ms = int((time.monotonic() - step_start) * 1000)
+                return {
+                    "step": step_name,
+                    "status": "success",
+                    "attempt": attempt + 1,
+                    "duration_ms": duration_ms,
+                    "result": result,
+                }
+            except asyncio.TimeoutError:
+                last_error = f"Timeout ({AGENT_TIMEOUT_SECONDS}s)"
+                logger.warning("%s timeout on attempt %d/%d", step_name, attempt + 1, 1 + max_retries)
+            except Exception as exc:
+                last_error = str(exc)
+                logger.warning("%s error on attempt %d/%d: %s", step_name, attempt + 1, 1 + max_retries, exc)
+                if attempt < max_retries:
+                    await asyncio.sleep(2 ** attempt)
+        return {
+            "step": step_name,
+            "status": "failed",
+            "attempt": 1 + max_retries,
+            "duration_ms": 0,
+            "error": last_error,
+            "result": None,
+        }
 
     async def process_review(
         self,
@@ -104,236 +145,170 @@ class AIOrchestrator:
         custom_instructions: Optional[str] = None,
     ) -> OrchestrationResult:
         pipeline_log: list[dict[str, Any]] = []
-        start_time = now()
+        start_time = time.monotonic()
 
         review, business, brand = await self._load_entities(business_id, review_id)
 
         # Step 1: Input Validation
-        step_start = now()
-        validation = await self.input_validator.validate(
-            {"content": review.content, "rating": review.rating}
-        )
-        review_text = validation.clean_text or review.content
-        pipeline_log.append({
-            "step": "input_validation",
-            "result": {"is_valid": validation.is_valid, "risk_flags": validation.risk_flags},
-            "duration_ms": int((now() - step_start).total_seconds() * 1000),
-        })
+        step = await self._run_agent_step("input_validation", self.input_validator.validate,
+                                          {"content": review.content, "rating": review.rating})
+        validation_result = step.get("result")
+        review_text = review.content
+        if validation_result and hasattr(validation_result, "clean_text") and validation_result.clean_text:
+            review_text = validation_result.clean_text
+        risk_flags = validation_result.risk_flags if validation_result and hasattr(validation_result, "risk_flags") else []
+        is_valid = validation_result.is_valid if validation_result and hasattr(validation_result, "is_valid") else True
+        pipeline_log.append(step)
 
         # Step 2: Language Detection
-        step_start = now()
-        language_result = await self.language_detector.detect(review_text)
-        review.language = language_result.language_code
-        pipeline_log.append({
-            "step": "language_detection",
-            "result": {
-                "language": language_result.language,
-                "confidence": language_result.confidence,
-                "code": language_result.language_code,
-            },
-            "duration_ms": int((now() - step_start).total_seconds() * 1000),
-        })
+        step = await self._run_agent_step("language_detection", self.language_detector.detect, review_text)
+        ld_result = step.get("result")
+        if ld_result and hasattr(ld_result, "language_code"):
+            review.language = ld_result.language_code
+        pipeline_log.append(step)
 
         # Step 3: Sentiment Analysis
-        step_start = now()
-        sentiment_result = await self.sentiment_analyzer.analyze(review_text, review.rating)
-        review.sentiment = sentiment_result.sentiment
-        review.sentiment_score = sentiment_result.confidence
-        pipeline_log.append({
-            "step": "sentiment_analysis",
-            "result": {
-                "sentiment": sentiment_result.sentiment,
-                "confidence": sentiment_result.confidence,
-                "reasoning": sentiment_result.reasoning,
-            },
-            "duration_ms": int((now() - step_start).total_seconds() * 1000),
-        })
+        step = await self._run_agent_step("sentiment_analysis", self.sentiment_analyzer.analyze, review_text, review.rating)
+        sa_result = step.get("result")
+        if sa_result and hasattr(sa_result, "sentiment"):
+            review.sentiment = sa_result.sentiment
+            review.sentiment_score = sa_result.confidence if hasattr(sa_result, "confidence") else 0.0
+        sentiment = sa_result.sentiment if sa_result and hasattr(sa_result, "sentiment") else "neutral"
+        sentiment_confidence = sa_result.confidence if sa_result and hasattr(sa_result, "confidence") else 0.5
+        sentiment_reasoning = sa_result.reasoning if sa_result and hasattr(sa_result, "reasoning") else ""
+        pipeline_log.append(step)
 
         # Step 4: Risk Classification
-        step_start = now()
-        risk_result = await self.risk_classifier.classify(
-            review_text=review_text,
-            rating=review.rating,
-            sentiment=sentiment_result.sentiment,
-            platform=review.platform,
-            business_industry=business.industry or "General",
-        )
-        review.risk_level = risk_result.risk_level
-        pipeline_log.append({
-            "step": "risk_classification",
-            "result": {
-                "risk_level": risk_result.risk_level,
-                "needs_human_review": risk_result.needs_human_review,
-                "risk_factors": risk_result.risk_factors,
-            },
-            "duration_ms": int((now() - step_start).total_seconds() * 1000),
-        })
+        step = await self._run_agent_step("risk_classification", self.risk_classifier.classify,
+                                          review_text, review.rating, sentiment, review.platform,
+                                          business.industry or "General")
+        rc_result = step.get("result")
+        risk_level = "medium"
+        risk_factors = []
+        needs_human = True
+        if rc_result and hasattr(rc_result, "risk_level"):
+            risk_level = rc_result.risk_level
+            risk_factors = rc_result.risk_factors if hasattr(rc_result, "risk_factors") else []
+            needs_human = rc_result.needs_human_review if hasattr(rc_result, "needs_human_review") else True
+        review.risk_level = risk_level
+        pipeline_log.append(step)
 
         # Step 5: Knowledge Retrieval
-        step_start = now()
-        knowledge_result = await self.knowledge_retriever.retrieve(
-            business_id=business_id,
-            review_text=review_text,
-            rating=review.rating,
-            sentiment=sentiment_result.sentiment,
-        )
-        pipeline_log.append({
-            "step": "knowledge_retrieval",
-            "result": {
-                "docs_count": len(knowledge_result.relevant_docs),
-                "brand_context_length": len(knowledge_result.brand_context),
-            },
-            "duration_ms": int((now() - step_start).total_seconds() * 1000),
-        })
+        step = await self._run_agent_step("knowledge_retrieval", self.knowledge_retriever.retrieve,
+                                          business_id, review_text, review.rating, sentiment)
+        kr_result = step.get("result")
+        brand_context = ""
+        relevant_docs = []
+        if kr_result and hasattr(kr_result, "brand_context"):
+            brand_context = kr_result.brand_context
+            relevant_docs = kr_result.relevant_docs if hasattr(kr_result, "relevant_docs") else []
+        pipeline_log.append(step)
 
         # Step 6: Reply Generation
-        step_start = now()
-        gen_result = await self.reply_generator.generate(
-            business_id=business_id,
-            review=review,
-            brand=brand,
-            knowledge=knowledge_result.brand_context,
-            custom_instructions=custom_instructions,
-        )
-        pipeline_log.append({
-            "step": "reply_generation",
-            "result": {
-                "reply_length": len(gen_result.reply_text),
-                "reasoning": gen_result.reasoning_summary,
-                "usage": gen_result.raw_response.get("usage", {}),
-            },
-            "duration_ms": int((now() - step_start).total_seconds() * 1000),
-        })
+        gen_result = None
+        for attempt in range(2):
+            step = await self._run_agent_step("reply_generation", self.reply_generator.generate,
+                                              business_id, review, brand, brand_context,
+                                              custom_instructions, risk_level)
+            gen_result = step.get("result")
+            if gen_result and hasattr(gen_result, "reply_text") and gen_result.reply_text:
+                break
+            logger.warning("Empty reply from generation, retrying (attempt %d)", attempt + 1)
+        pipeline_log.append(step)
+
+        reply_text = gen_result.reply_text if gen_result and hasattr(gen_result, "reply_text") else "Thank you for your feedback."
+        gen_raw = gen_result.raw_response if gen_result and hasattr(gen_result, "raw_response") else {}
 
         # Step 7: Safety Guardrail
-        step_start = now()
-        safety_result = await self.safety_guardrail.check(
-            reply_text=gen_result.reply_text,
-            review_text=review_text,
-            brand_context=knowledge_result.brand_context,
-        )
-        pipeline_log.append({
-            "step": "safety_guardrail",
-            "result": {
-                "is_safe": safety_result.is_safe,
-                "safety_score": safety_result.safety_score,
-                "violations": safety_result.violations,
-            },
-            "duration_ms": int((now() - step_start).total_seconds() * 1000),
-        })
+        step = await self._run_agent_step("safety_guardrail", self.safety_guardrail.check,
+                                          reply_text, review_text, brand_context)
+        sg_result = step.get("result")
+        is_safe = sg_result.is_safe if sg_result and hasattr(sg_result, "is_safe") else True
+        safety_score = sg_result.safety_score if sg_result and hasattr(sg_result, "safety_score") else 1.0
+        violations = sg_result.violations if sg_result and hasattr(sg_result, "violations") else []
+        pipeline_log.append(step)
 
         # Step 8: Quality Evaluation
-        step_start = now()
-        quality_result = await self.quality_evaluator.evaluate(
-            reply=gen_result.reply_text,
-            review=review,
-            brand=brand,
-            context=knowledge_result.brand_context,
-        )
-        pipeline_log.append({
-            "step": "quality_evaluation",
-            "result": {
-                "overall_score": quality_result.overall_score,
-                "breakdown": quality_result.breakdown,
-                "passes_threshold": quality_result.passes_threshold,
-            },
-            "duration_ms": int((now() - step_start).total_seconds() * 1000),
-        })
+        step = await self._run_agent_step("quality_evaluation", self.quality_evaluator.evaluate,
+                                          reply_text, review, brand, brand_context)
+        qe_result = step.get("result")
+        quality_score = qe_result.overall_score if qe_result and hasattr(qe_result, "overall_score") else 50.0
+        quality_breakdown = qe_result.breakdown if qe_result and hasattr(qe_result, "breakdown") else {}
+        passes_threshold = qe_result.passes_threshold if qe_result and hasattr(qe_result, "passes_threshold") else False
+        pipeline_log.append(step)
 
-        # Decisions
+        # Use Workflow Service for decisions
+        wf_decision = await self.workflow_service.decide(
+            business_id=business_id,
+            risk_level=risk_level,
+            quality_score=quality_score,
+            safety_score=safety_score,
+        )
+
         decisions: dict[str, Any] = {
-            "route_to_human": False,
-            "reasons": [],
-            "auto_approve": False,
+            "route_to_human": wf_decision["needs_review"],
+            "auto_approve": wf_decision["auto_approve"],
+            "reasons": wf_decision.get("reasons", []),
         }
 
-        if risk_result.risk_level == "high":
+        if not decisions["route_to_human"] and (quality_score < 50 or safety_score < 50):
             decisions["route_to_human"] = True
-            decisions["reasons"].append("high_risk")
+            decisions["reasons"].append("critical_score_threshold")
 
-        if not safety_result.is_safe or safety_result.safety_score < settings.SAFETY_SCORE_THRESHOLD:
-            decisions["route_to_human"] = True
-            decisions["reasons"].append("low_safety_score")
+        reply_status = "approved" if decisions["auto_approve"] else "pending_approval"
 
-        if not quality_result.passes_threshold:
-            decisions["route_to_human"] = True
-            decisions["reasons"].append("low_quality_score")
-
-        if validation.risk_flags and any(
-            f not in ("contains_html", "excessive_capitalization")
-            for f in validation.risk_flags
-        ):
-            decisions["route_to_human"] = True
-            decisions["reasons"].append("validation_failed")
-
-        if not decisions["route_to_human"] and risk_result.risk_level == "low" and sentiment_result.sentiment in ("positive", "neutral"):
-            decisions["auto_approve"] = True
-
-        # Determine reply status
-        if decisions["route_to_human"]:
-            reply_status = "pending_approval"
-        elif decisions["auto_approve"]:
-            reply_status = "approved"
-        else:
-            reply_status = "pending_approval"
-
-        # Create Reply record
+        # Create or update Reply
         existing_reply_result = await self.db.execute(
             select(Reply).where(Reply.review_id == review_id)
         )
         existing_reply = existing_reply_result.scalar_one_or_none()
 
+        ai_meta = {
+            "pipeline_log": pipeline_log,
+            "decisions": decisions,
+            "sentiment": sentiment,
+            "sentiment_confidence": sentiment_confidence,
+            "risk_level": risk_level,
+            "risk_factors": risk_factors,
+            "language": review.language,
+            "safety_violations": violations,
+            "quality_breakdown": quality_breakdown,
+            "generation_usage": gen_raw.get("usage"),
+            "model": gen_raw.get("model", settings.OPENAI_MODEL),
+        }
+
         if existing_reply:
-            existing_reply.content = gen_result.reply_text
+            existing_reply.content = reply_text
             existing_reply.status = reply_status
-            existing_reply.quality_score = quality_result.overall_score / 100
-            existing_reply.safety_score = safety_result.safety_score
-            existing_reply.ai_metadata = {
-                "pipeline_log": pipeline_log,
-                "decisions": decisions,
-                "sentiment": sentiment_result.sentiment,
-                "sentiment_confidence": sentiment_result.confidence,
-                "risk_level": risk_result.risk_level,
-                "language": language_result.language_code,
-                "safety_violations": safety_result.violations,
-                "quality_breakdown": quality_result.breakdown,
-                "generation_usage": gen_result.raw_response.get("usage"),
-            }
+            existing_reply.quality_score = quality_score / 100.0
+            existing_reply.safety_score = safety_score
+            existing_reply.ai_metadata = ai_meta
             reply = existing_reply
         else:
             reply = Reply(
                 id=uuid4(),
                 business_id=business_id,
                 review_id=review_id,
-                content=gen_result.reply_text,
+                content=reply_text,
                 status=reply_status,
-                quality_score=quality_result.overall_score / 100,
-                safety_score=safety_result.safety_score,
-                ai_metadata={
-                    "pipeline_log": pipeline_log,
-                    "decisions": decisions,
-                    "sentiment": sentiment_result.sentiment,
-                    "sentiment_confidence": sentiment_result.confidence,
-                    "risk_level": risk_result.risk_level,
-                    "language": language_result.language_code,
-                    "safety_violations": safety_result.violations,
-                    "quality_breakdown": quality_result.breakdown,
-                    "generation_usage": gen_result.raw_response.get("usage"),
-                },
+                quality_score=quality_score / 100.0,
+                safety_score=safety_score,
+                ai_metadata=ai_meta,
             )
             self.db.add(reply)
 
         review.is_processed = True
 
-        # Log usage
-        usage_info = gen_result.raw_response.get("usage", {})
+        # Usage logging
+        usage = gen_raw.get("usage", {})
+        total_duration = int((time.monotonic() - start_time) * 1000)
         await self._log_usage(
             business_id=business_id,
             metric_type="ai_generation",
-            model=gen_result.raw_response.get("model", settings.OPENAI_MODEL),
-            prompt_tokens=usage_info.get("prompt_tokens", 0),
-            completion_tokens=usage_info.get("completion_tokens", 0),
-            duration_ms=int((now() - start_time).total_seconds() * 1000),
+            model=gen_raw.get("model", settings.OPENAI_MODEL),
+            prompt_tokens=usage.get("prompt_tokens", 0),
+            completion_tokens=usage.get("completion_tokens", 0),
+            duration_ms=total_duration,
         )
 
         # Audit log
@@ -342,28 +317,28 @@ class AIOrchestrator:
             review_id=review_id,
             action="process_review",
             details={
-                "sentiment": sentiment_result.sentiment,
-                "risk_level": risk_result.risk_level,
-                "safety_score": safety_result.safety_score,
-                "quality_score": quality_result.overall_score,
+                "sentiment": sentiment,
+                "risk_level": risk_level,
+                "safety_score": safety_score,
+                "quality_score": quality_score,
                 "route_to_human": decisions["route_to_human"],
                 "auto_approve": decisions["auto_approve"],
+                "reasons": decisions["reasons"],
                 "pipeline_steps": len(pipeline_log),
+                "total_duration_ms": total_duration,
             },
         )
 
         await self.db.flush()
 
-        all_scores = {
-            "sentiment_confidence": sentiment_result.confidence,
-            "safety_score": safety_result.safety_score,
-            "quality_score": quality_result.overall_score,
-            "quality_breakdown": quality_result.breakdown,
-        }
-
         return OrchestrationResult(
             reply=reply,
-            all_scores=all_scores,
+            all_scores={
+                "sentiment_confidence": sentiment_confidence,
+                "safety_score": safety_score,
+                "quality_score": quality_score,
+                "quality_breakdown": quality_breakdown,
+            },
             decisions=decisions,
             pipeline_log=pipeline_log,
         )

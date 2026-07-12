@@ -5,10 +5,11 @@ from datetime import datetime
 from typing import Any, Optional
 from uuid import UUID
 
-from sqlalchemy import DateTime, Float, ForeignKey, Integer, JSON, String, Uuid, func
+from sqlalchemy import DateTime, Float, ForeignKey, Integer, JSON, String, Uuid
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.database import Base
+from app.utils.helpers import now
 
 
 class UsageMetric(Base):
@@ -31,5 +32,5 @@ class UsageMetric(Base):
         "metadata", JSON, nullable=True, default=dict
     )
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now()
+        DateTime(timezone=True), default=now
     )

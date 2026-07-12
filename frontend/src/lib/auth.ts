@@ -27,6 +27,22 @@ export function removeRefreshToken(): void {
   localStorage.removeItem(REFRESH_KEY)
 }
 
+export function getUser(): { id: string; email: string; full_name: string; business_id: string } | null {
+  const token = getToken()
+  if (!token) return null
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1]))
+    return {
+      id: payload.sub || payload.id,
+      email: payload.email,
+      full_name: payload.full_name || payload.name,
+      business_id: payload.business_id,
+    }
+  } catch {
+    return null
+  }
+}
+
 export function isAuthenticated(): boolean {
   const token = getToken()
   if (!token) return false

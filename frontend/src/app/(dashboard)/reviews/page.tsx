@@ -1,61 +1,45 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { motion } from 'framer-motion'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton, CardSkeleton } from '@/components/ui/skeleton'
-import { Select } from '@/components/ui/select'
 import { Progress } from '@/components/ui/progress'
-import { cn, formatRelativeTime, truncate, sentimentColor, riskColor } from '@/lib/utils'
+import { cn, formatRelativeTime, truncate, sentimentColor } from '@/lib/utils'
 import * as api from '@/lib/api'
+import { ReviewCard } from '@/components/reviews/review-card'
+import { FiltersBar } from '@/components/reviews/filters-bar'
+import { PageTransition } from '@/components/layout/page-transition'
 import type { Review } from '@/types'
 import {
-  Search,
   Star,
   Download,
   ChevronLeft,
   ChevronRight,
   MessageSquare,
   Flag,
+  Bot,
+  LayoutGrid,
+  List,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
 } from 'lucide-react'
 
-const sentimentOptions = [
-  { value: '', label: 'All Sentiments' },
-  { value: 'positive', label: 'Positive' },
-  { value: 'neutral', label: 'Neutral' },
-  { value: 'negative', label: 'Negative' },
-  { value: 'urgent', label: 'Urgent' },
-  { value: 'spam', label: 'Spam' },
-]
-
-const platformOptions = [
-  { value: '', label: 'All Platforms' },
-  { value: 'google', label: 'Google' },
-  { value: 'facebook', label: 'Facebook' },
-  { value: 'trustpilot', label: 'Trustpilot' },
-  { value: 'yelp', label: 'Yelp' },
-  { value: 'shopify', label: 'Shopify' },
-  { value: 'amazon', label: 'Amazon' },
-]
-
-const riskOptions = [
-  { value: '', label: 'All Risk Levels' },
-  { value: 'low', label: 'Low' },
-  { value: 'medium', label: 'Medium' },
-  { value: 'high', label: 'High' },
-]
+type SortField = 'created_at' | 'rating' | 'sentiment'
+type SortOrder = 'asc' | 'desc'
+type ViewMode = 'grid' | 'list'
 
 const stagger = {
   hidden: { opacity: 0 },
   show: {
     opacity: 1,
-    transition: { staggerChildren: 0.05 },
+    transition: { staggerChildren: 0.04 },
   },
 }
 
@@ -72,9 +56,15 @@ export default function ReviewsPage() {
   const [platform, setPlatform] = useState('')
   const [rating, setRating] = useState(0)
   const [riskLevel, setRiskLevel] = useState('')
+  const [sortBy, setSortBy] = useState<SortField>('created_at')
+  const [sortOrder, setSortOrder] = useState<SortOrder>('desc')
+  const [viewMode, setViewMode] = useState<ViewMode>('grid')
+  const [selected, setSelected] = useState<Set<string>>(new Set())
+  const [focusedIndex, setFocusedIndex] = useState(-1)
+  const [showNewIndicator, setShowNewIndicator] = useState(false)
 
   const { data, isLoading } = useQuery({
-    queryKey: ['reviews', page, search, sentiment, platform, rating, riskLevel],
+    queryKey: ['reviews', page, search, sentiment, platform, rating, riskLevel, sortBy, sortOrder],
     queryFn: () =>
       api.getReviews({
         page,
@@ -84,8 +74,20 @@ export default function ReviewsPage() {
         platform: platform || undefined,
         rating: rating || undefined,
         risk_level: riskLevel || undefined,
+        sort_by: sortBy,
+        sort_order: sortOrder,
       }),
   })
+
+  const toggleSort = (field: SortField) => {
+    if (sortBy === field) {
+      setSortOrder((o) => (o === 'asc' ? 'desc' : 'asc'))
+    } else {
+      setSortBy(field)
+      setSortOrder('desc')
+    }
+    setPage(1)
+  }
 
   const clearFilters = () => {
     setSearch('')
@@ -98,211 +100,305 @@ export default function ReviewsPage() {
 
   const hasFilters = search || sentiment || platform || rating || riskLevel
 
+  const toggleSelect = (id: string) => {
+    setSelected((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  const toggleSelectAll = () => {
+    if (!data?.items) return
+    if (selected.size === data.items.length) {
+      setSelected(new Set())
+    } else {
+      setSelected(new Set(data.items.map((r) => r.id)))
+    }
+  }
+
+  const loadMore = () => {
+    if (data && page < data.total_pages) {
+      setPage((p) => p + 1)
+    }
+  }
+
+  const handleKeyDown = useCallback((e: KeyboardEvent) => {
+    if (!data?.items.length) return
+    if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
+
+    const items = data.items
+    if (e.key === 'j' || e.key === 'ArrowDown') {
+      e.preventDefault()
+      setFocusedIndex((i) => Math.min(i + 1, items.length - 1))
+    } else if (e.key === 'k' || e.key === 'ArrowUp') {
+      e.preventDefault()
+      setFocusedIndex((i) => Math.max(i - 1, 0))
+    } else if (e.key === 'Enter' && focusedIndex >= 0) {
+      e.preventDefault()
+      router.push(`/reviews/${items[focusedIndex].id}`)
+    }
+  }, [data, focusedIndex, router])
+
+  useEffect(() => {
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [handleKeyDown])
+
+  const SortButton = ({ field, label }: { field: SortField; label: string }) => (
+    <button
+      onClick={() => toggleSort(field)}
+      className={cn(
+        'flex items-center gap-1 text-xs font-medium transition-colors',
+        sortBy === field ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'
+      )}
+      aria-label={`Sort by ${label}`}
+    >
+      {label}
+      {sortBy === field ? (
+        sortOrder === 'asc' ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />
+      ) : (
+        <ArrowUpDown className="h-3 w-3 opacity-50" />
+      )}
+    </button>
+  )
+
+  const activeFilterCount = [search, sentiment, platform, riskLevel, rating ? 'rating' : ''].filter(Boolean).length
+
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <h2 className="text-2xl font-bold text-foreground">Reviews</h2>
-          {data && (
-            <Badge variant="secondary" className="text-sm">
-              {data.total}
-            </Badge>
-          )}
+    <PageTransition>
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <h2 className="text-2xl font-bold text-foreground">Reviews</h2>
+            {data && (
+              <Badge variant="secondary" className="text-sm" aria-label={`${data.total} total reviews`}>
+                {data.total}
+              </Badge>
+            )}
+            {showNewIndicator && (
+              <Badge variant="success" className="text-[10px] animate-pulse">
+                <span className="relative flex h-1.5 w-1.5 mr-1">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+                  <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                </span>
+                New
+              </Badge>
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1 rounded-lg border p-0.5" role="radiogroup" aria-label="View mode">
+              <button
+                onClick={() => setViewMode('grid')}
+                className={cn('rounded-md p-1.5 transition-colors', viewMode === 'grid' ? 'bg-accent text-foreground' : 'text-muted-foreground hover:text-foreground')}
+                aria-label="Grid view"
+                role="radio"
+                aria-checked={viewMode === 'grid'}
+              >
+                <LayoutGrid className="h-4 w-4" />
+              </button>
+              <button
+                onClick={() => setViewMode('list')}
+                className={cn('rounded-md p-1.5 transition-colors', viewMode === 'list' ? 'bg-accent text-foreground' : 'text-muted-foreground hover:text-foreground')}
+                aria-label="List view"
+                role="radio"
+                aria-checked={viewMode === 'list'}
+              >
+                <List className="h-4 w-4" />
+              </button>
+            </div>
+            <Button variant="outline" size="sm" aria-label="Export reviews">
+              <Download className="mr-2 h-4 w-4" />
+              Export
+            </Button>
+          </div>
         </div>
-        <Button variant="outline" size="sm">
-          <Download className="mr-2 h-4 w-4" />
-          Export
-        </Button>
-      </div>
 
-      <Card>
-        <CardContent className="p-4">
-          <div className="flex flex-wrap items-center gap-3">
-            <div className="relative min-w-[200px] flex-1">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <input
-                className="flex h-9 w-full rounded-xl border border-input bg-background pl-9 pr-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                placeholder="Search reviews..."
-                value={search}
-                onChange={(e) => { setSearch(e.target.value); setPage(1) }}
-              />
+        <FiltersBar
+          search={search}
+          onSearchChange={(v) => { setSearch(v); setPage(1) }}
+          sentiment={sentiment}
+          onSentimentChange={(v) => { setSentiment(v); setPage(1) }}
+          platform={platform}
+          onPlatformChange={(v) => { setPlatform(v); setPage(1) }}
+          rating={rating}
+          onRatingChange={(v) => { setRating(v); setPage(1) }}
+          riskLevel={riskLevel}
+          onRiskLevelChange={(v) => { setRiskLevel(v); setPage(1) }}
+          dateRange=""
+          onDateRangeChange={() => {}}
+          onClear={clearFilters}
+          hasFilters={hasFilters}
+          activeFilterCount={activeFilterCount}
+        />
+
+        {selected.size > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="flex items-center gap-2 rounded-xl border bg-primary/5 p-3"
+          >
+            <span className="text-sm font-medium text-foreground">{selected.size} selected</span>
+            <div className="ml-auto flex items-center gap-2">
+              <Button size="sm" variant="outline" className="h-8 text-xs">
+                <Flag className="mr-1 h-3 w-3" />
+                Flag Selected
+              </Button>
+              <Button size="sm" variant="default" className="h-8 text-xs">
+                <Bot className="mr-1 h-3 w-3" />
+                Generate Replies
+              </Button>
+              <Button size="sm" variant="ghost" className="h-8 text-xs" onClick={() => setSelected(new Set())}>
+                Clear
+              </Button>
             </div>
+          </motion.div>
+        )}
 
-            <Select
-              options={sentimentOptions}
-              value={sentiment}
-              onChange={(v) => { setSentiment(v); setPage(1) }}
-              placeholder="Sentiment"
-              className="min-w-[140px]"
-            />
+        <div className="flex items-center gap-3 text-xs text-muted-foreground px-1">
+          <SortButton field="created_at" label="Date" />
+          <SortButton field="rating" label="Rating" />
+          <SortButton field="sentiment" label="Sentiment" />
+          <span className="ml-auto text-xs text-muted-foreground hidden sm:block">
+            Use <kbd className="rounded border bg-muted px-1 py-0.5 text-[10px]">j</kbd> <kbd className="rounded border bg-muted px-1 py-0.5 text-[10px]">k</kbd> to navigate
+          </span>
+        </div>
 
-            <Select
-              options={platformOptions}
-              value={platform}
-              onChange={(v) => { setPlatform(v); setPage(1) }}
-              placeholder="Platform"
-              className="min-w-[140px]"
-            />
-
-            <Select
-              options={riskOptions}
-              value={riskLevel}
-              onChange={(v) => { setRiskLevel(v); setPage(1) }}
-              placeholder="Risk Level"
-              className="min-w-[140px]"
-            />
-
-            <div className="flex items-center gap-1">
-              {[1, 2, 3, 4, 5].map((star) => (
-                <button
-                  key={star}
-                  onClick={() => { setRating(star === rating ? 0 : star); setPage(1) }}
-                  className="transition-colors"
-                >
-                  <Star
+        {isLoading ? (
+          <div className={cn('grid gap-4', viewMode === 'grid' ? 'sm:grid-cols-2 lg:grid-cols-3' : 'grid-cols-1')}>
+            {Array.from({ length: 6 }).map((_, i) => (
+              <CardSkeleton key={i} />
+            ))}
+          </div>
+        ) : !data?.items.length ? (
+          <Card className="py-16 text-center">
+            <MessageSquare className="mx-auto h-12 w-12 text-muted-foreground/50" />
+            <h3 className="mt-4 text-lg font-semibold text-foreground">No reviews found</h3>
+            <p className="mt-1 text-sm text-muted-foreground">Try adjusting your filters or connect a new platform.</p>
+          </Card>
+        ) : (
+          <>
+            {viewMode === 'grid' ? (
+              <motion.div
+                variants={stagger}
+                initial="hidden"
+                animate="show"
+                className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3"
+              >
+                {data?.items.map((review, idx) => (
+                  <motion.div key={review.id} variants={fadeItem}>
+                    <div className="relative">
+                      <label className="absolute left-3 top-3 z-10 flex h-5 w-5 cursor-pointer items-center justify-center">
+                        <input
+                          type="checkbox"
+                          checked={selected.has(review.id)}
+                          onChange={() => toggleSelect(review.id)}
+                          className="rounded border-neutral-300 text-indigo-600 focus:ring-indigo-500"
+                          aria-label={`Select review by ${review.customer_name}`}
+                        />
+                      </label>
+                      <Link
+                        href={`/reviews/${review.id}`}
+                        className={cn(
+                          focusedIndex === idx && 'ring-2 ring-indigo-400 rounded-2xl'
+                        )}
+                      >
+                        <ReviewCard review={review} />
+                      </Link>
+                    </div>
+                  </motion.div>
+                ))}
+              </motion.div>
+            ) : (
+              <div className="space-y-2">
+                <div className="hidden sm:grid sm:grid-cols-6 gap-4 px-4 py-2 text-xs font-medium text-muted-foreground border-b" role="row">
+                  <div className="flex items-center gap-2 col-span-2" role="columnheader">
+                    <input
+                      type="checkbox"
+                      checked={data.items.length > 0 && selected.size === data.items.length}
+                      onChange={toggleSelectAll}
+                      className="rounded border-neutral-300 text-indigo-600 focus:ring-indigo-500"
+                      aria-label="Select all reviews"
+                    />
+                    Customer
+                  </div>
+                  <div role="columnheader">Platform</div>
+                  <div role="columnheader">Rating</div>
+                  <div role="columnheader">Sentiment</div>
+                  <div role="columnheader">Status</div>
+                </div>
+                {data.items.map((review, idx) => (
+                  <div
+                    key={review.id}
                     className={cn(
-                      'h-5 w-5',
-                      star <= rating ? 'fill-amber-400 text-amber-400' : 'text-neutral-300 dark:text-neutral-600 hover:text-amber-300'
+                      'grid sm:grid-cols-6 gap-4 items-center rounded-xl border p-4 transition-all hover:bg-accent/50',
+                      focusedIndex === idx && 'ring-2 ring-indigo-400',
+                      selected.has(review.id) && 'bg-primary/5 border-primary/30'
                     )}
-                  />
-                </button>
-              ))}
-            </div>
+                    role="row"
+                  >
+                    <div className="flex items-center gap-3 col-span-2 min-w-0">
+                      <input
+                        type="checkbox"
+                        checked={selected.has(review.id)}
+                        onChange={() => toggleSelect(review.id)}
+                        className="rounded border-neutral-300 text-indigo-600 focus:ring-indigo-500 shrink-0"
+                        aria-label={`Select ${review.customer_name}`}
+                      />
+                      <Link href={`/reviews/${review.id}`} className="min-w-0">
+                        <p className="text-sm font-medium text-foreground truncate">{review.customer_name}</p>
+                        <p className="text-xs text-muted-foreground truncate">{truncate(review.review_text, 60)}</p>
+                      </Link>
+                    </div>
+                    <span className="text-xs capitalize text-muted-foreground hidden sm:block">{review.platform.replace('_', ' ')}</span>
+                    <div className="flex items-center gap-0.5 hidden sm:flex" aria-label={`${review.rating} stars`}>
+                      {Array.from({ length: 5 }).map((_, i) => (
+                        <Star key={i} className={cn('h-3 w-3', i < review.rating ? 'fill-amber-400 text-amber-400' : 'text-neutral-300 dark:text-neutral-600')} />
+                      ))}
+                    </div>
+                    <Badge className={cn('text-[10px] w-fit hidden sm:block', sentimentColor(review.sentiment))} aria-label={`Sentiment: ${review.sentiment}`}>
+                      {review.sentiment.replace('_', ' ')}
+                    </Badge>
+                    <span className="text-xs text-muted-foreground hidden sm:block">{formatRelativeTime(review.created_at)}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </>
+        )}
 
-            {hasFilters && (
-              <Button variant="ghost" size="sm" onClick={clearFilters}>
-                Clear filters
+        {data && data.total_pages > 1 && (
+          <div className="flex items-center justify-center gap-2 pt-4">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              disabled={page === 1}
+              aria-label="Previous page"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <span className="text-sm text-muted-foreground">
+              Page {page} of {data.total_pages}
+            </span>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setPage((p) => Math.min(data.total_pages, p + 1))}
+              disabled={page === data.total_pages}
+              aria-label="Next page"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+            {page < data.total_pages && (
+              <Button variant="ghost" size="sm" onClick={loadMore} aria-label="Load more reviews">
+                Load More
               </Button>
             )}
           </div>
-        </CardContent>
-      </Card>
-
-      {isLoading ? (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <CardSkeleton key={i} />
-          ))}
-        </div>
-      ) : data?.items.length === 0 ? (
-        <Card className="py-16 text-center">
-          <MessageSquare className="mx-auto h-12 w-12 text-muted-foreground/50" />
-          <h3 className="mt-4 text-lg font-semibold text-foreground">No reviews found</h3>
-          <p className="mt-1 text-sm text-muted-foreground">Try adjusting your filters or connect a new platform.</p>
-        </Card>
-      ) : (
-        <motion.div
-          variants={stagger}
-          initial="hidden"
-          animate="show"
-          className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3"
-        >
-          {data?.items.map((review) => (
-            <motion.div key={review.id} variants={fadeItem}>
-              <Link href={`/reviews/${review.id}`}>
-                <Card
-                  glass
-                  className="h-full cursor-pointer transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5"
-                >
-                  <CardContent className="p-5">
-                    <div className="flex items-start justify-between">
-                      <div className="min-w-0 flex-1">
-                        <p className="font-medium text-foreground truncate">{review.customer_name}</p>
-                        <p className="text-xs text-muted-foreground capitalize">{review.platform.replace('_', ' ')}</p>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        {Array.from({ length: 5 }).map((_, i) => (
-                          <Star
-                            key={i}
-                            className={cn(
-                              'h-3 w-3',
-                              i < review.rating ? 'fill-amber-400 text-amber-400' : 'text-neutral-300 dark:text-neutral-600'
-                            )}
-                          />
-                        ))}
-                      </div>
-                    </div>
-
-                    <p className="mt-3 text-sm text-muted-foreground line-clamp-3">
-                      {truncate(review.review_text, 120)}
-                    </p>
-
-                    <div className="mt-3 flex flex-wrap items-center gap-2">
-                      <Badge className={cn('text-[10px]', sentimentColor(review.sentiment))}>
-                        {review.sentiment}
-                      </Badge>
-                      <Badge variant="outline" className={cn('text-[10px] border', riskColor(review.risk_level))}>
-                        {review.risk_level}
-                      </Badge>
-                      {review.is_flagged && (
-                        <Badge variant="destructive" className="text-[10px]">
-                          <Flag className="mr-0.5 h-2.5 w-2.5" />
-                          Flagged
-                        </Badge>
-                      )}
-                    </div>
-
-                    {review.sentiment_confidence > 0 && (
-                      <div className="mt-3">
-                        <div className="flex items-center justify-between text-xs text-muted-foreground">
-                          <span>Confidence</span>
-                          <span>{Math.round(review.sentiment_confidence * 100)}%</span>
-                        </div>
-                        <Progress value={Math.round(review.sentiment_confidence * 100)} className="mt-1 h-1.5" />
-                      </div>
-                    )}
-
-                    <div className="mt-3 flex items-center justify-between text-xs text-muted-foreground">
-                      <span>{formatRelativeTime(review.created_at)}</span>
-                      {review.reply ? (
-                        <Badge variant="success" className="text-[10px]">Replied</Badge>
-                      ) : (
-                        <Badge variant="warning" className="text-[10px]">Pending</Badge>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-              </Link>
-            </motion.div>
-          ))}
-        </motion.div>
-      )}
-
-      {data && data.total_pages > 1 && (
-        <div className="flex items-center justify-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setPage((p) => Math.max(1, p - 1))}
-            disabled={page === 1}
-          >
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-          {Array.from({ length: data.total_pages }, (_, i) => i + 1)
-            .filter((p) => p === 1 || p === data.total_pages || Math.abs(p - page) <= 2)
-            .map((p, idx, arr) => (
-              <div key={p} className="flex items-center gap-1">
-                {idx > 0 && arr[idx - 1] !== p - 1 && <span className="px-1 text-muted-foreground">...</span>}
-                <Button
-                  variant={p === page ? 'default' : 'outline'}
-                  size="sm"
-                  className="min-w-[36px]"
-                  onClick={() => setPage(p)}
-                >
-                  {p}
-                </Button>
-              </div>
-            ))}
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setPage((p) => Math.min(data.total_pages, p + 1))}
-            disabled={page === data.total_pages}
-          >
-            <ChevronRight className="h-4 w-4" />
-          </Button>
-        </div>
-      )}
-    </div>
+        )}
+      </div>
+    </PageTransition>
   )
 }

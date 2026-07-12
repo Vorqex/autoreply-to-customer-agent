@@ -7,7 +7,9 @@ from uuid import UUID
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
-from passlib.context import CryptContext
+import hashlib
+import secrets
+
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -15,7 +17,6 @@ from app.core.config import settings
 from app.core.database import get_db
 from app.models.user import User
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
 
 
@@ -57,11 +58,17 @@ def verify_token(token: str) -> dict[str, Any]:
 
 
 def hash_password(password: str) -> str:
-    return pwd_context.hash(password)
+    salt = secrets.token_hex(16)
+    pwd_hash = hashlib.sha256((salt + password).encode()).hexdigest()
+    return f"{salt}${pwd_hash}"
 
 
 def verify_password(plain: str, hashed: str) -> bool:
-    return pwd_context.verify(plain, hashed)
+    try:
+        salt, pwd_hash = hashed.split("$", 1)
+        return hashlib.sha256((salt + plain).encode()).hexdigest() == pwd_hash
+    except (ValueError, AttributeError):
+        return False
 
 
 async def get_current_user(

@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { useForm } from 'react-hook-form'
+import { useForm, type SubmitHandler } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { motion } from 'framer-motion'
@@ -20,7 +20,7 @@ const signupSchema = z
     email: z.string().email('Please enter a valid email'),
     password: z.string().min(8, 'At least 8 characters').regex(/[A-Z]/, 'Need 1 uppercase').regex(/[0-9]/, 'Need 1 number'),
     confirmPassword: z.string(),
-    terms: z.literal(true, { errorMap: () => ({ message: 'You must accept the terms' }) }),
+    terms: z.boolean().refine((v) => v === true, { message: 'You must accept the terms' }),
   })
   .refine((d) => d.password === d.confirmPassword, {
     message: 'Passwords do not match',
@@ -72,7 +72,7 @@ export default function SignupPage() {
   const password = watch('password', '')
   const strength = getPasswordStrength(password)
 
-  const onSubmit = async (data: SignupForm) => {
+  const onSubmit: SubmitHandler<SignupForm> = async (data) => {
     setLoading(true)
     try {
       await api.signup({

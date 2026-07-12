@@ -5,10 +5,11 @@ from datetime import datetime
 from typing import TYPE_CHECKING, Any, List, Optional
 from uuid import UUID
 
-from sqlalchemy import Boolean, DateTime, Integer, JSON, String, Text, Uuid, func
+from sqlalchemy import Boolean, DateTime, Integer, JSON, String, Text, Uuid
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
+from app.utils.helpers import now
 
 if TYPE_CHECKING:
     from app.models.user import User
@@ -34,10 +35,10 @@ class Business(Base):
         JSON, nullable=True, default=dict
     )
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now()
+        DateTime(timezone=True), default=now
     )
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+        DateTime(timezone=True), default=now, onupdate=now
     )
 
     users: Mapped[List["User"]] = relationship("User", back_populates="business")

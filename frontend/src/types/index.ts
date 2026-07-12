@@ -115,6 +115,7 @@ export interface MonthlyActivity {
 export interface ApiResponse<T> {
   data: T
   message?: string
+  error?: string
 }
 
 export interface PaginatedResponse<T> {
@@ -123,6 +124,18 @@ export interface PaginatedResponse<T> {
   page: number
   page_size: number
   total_pages: number
+}
+
+export interface PlatformConnection {
+  id: string
+  platform: Platform
+  is_connected: boolean
+  connected_at: string | null
+  business_id: string
+  platform_account_name?: string
+  platform_account_email?: string
+  review_count?: number
+  avg_rating?: number
 }
 
 export type Platform = 'google' | 'facebook' | 'trustpilot' | 'yelp' | 'shopify' | 'amazon' | 'app_store' | 'play_store' | 'airbnb' | 'booking'

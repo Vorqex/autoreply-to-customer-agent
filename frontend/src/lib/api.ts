@@ -2,7 +2,7 @@ import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios'
 import { getToken, getRefreshToken, setToken, setRefreshToken, removeToken, removeRefreshToken } from './auth'
 import type {
   User, Business, BrandVoice, Review, Reply, DashboardStats,
-  SentimentTrend, PlatformPerformance, MonthlyActivity,
+  SentimentTrend, PlatformPerformance, MonthlyActivity, PlatformConnection,
   ApiResponse, PaginatedResponse
 } from '@/types'
 
@@ -59,7 +59,7 @@ export async function signup(data: {
   email: string
   password: string
 }): Promise<{ user: User; message: string }> {
-  const { data: res } = await api.post('/auth/signup', data)
+  const { data: res } = await api.post('/auth/register', data)
   return res
 }
 
@@ -84,22 +84,22 @@ export async function getMe(): Promise<User> {
 }
 
 export async function getDashboardStats(): Promise<DashboardStats> {
-  const { data } = await api.get('/dashboard/stats')
+  const { data } = await api.get('/analytics/dashboard')
   return data
 }
 
 export async function getSentimentTrends(): Promise<SentimentTrend[]> {
-  const { data } = await api.get('/dashboard/sentiment-trends')
+  const { data } = await api.get('/analytics/sentiment-trends')
   return data
 }
 
 export async function getPlatformPerformance(): Promise<PlatformPerformance[]> {
-  const { data } = await api.get('/dashboard/platform-performance')
+  const { data } = await api.get('/analytics/platform-performance')
   return data
 }
 
 export async function getMonthlyActivity(): Promise<MonthlyActivity[]> {
-  const { data } = await api.get('/dashboard/monthly-activity')
+  const { data } = await api.get('/analytics/monthly-activity')
   return data
 }
 
@@ -128,28 +128,28 @@ export async function generateReply(reviewId: string): Promise<Reply> {
   return data
 }
 
-export async function updateReply(reviewId: string, content: string): Promise<Reply> {
-  const { data } = await api.put(`/reviews/${reviewId}/reply`, { content })
+export async function updateReply(replyId: string, content: string): Promise<Reply> {
+  const { data } = await api.patch(`/replies/${replyId}`, { content })
   return data
 }
 
-export async function approveReply(reviewId: string): Promise<Reply> {
-  const { data } = await api.post(`/reviews/${reviewId}/approve-reply`)
+export async function approveReply(replyId: string): Promise<Reply> {
+  const { data } = await api.post(`/replies/${replyId}/approve`)
   return data
 }
 
-export async function rejectReply(reviewId: string): Promise<Reply> {
-  const { data } = await api.post(`/reviews/${reviewId}/reject-reply`)
+export async function rejectReply(replyId: string): Promise<Reply> {
+  const { data } = await api.post(`/replies/${replyId}/reject`)
   return data
 }
 
-export async function publishReply(reviewId: string): Promise<Reply> {
-  const { data } = await api.post(`/reviews/${reviewId}/publish-reply`)
+export async function publishReply(replyId: string): Promise<Reply> {
+  const { data } = await api.post(`/replies/${replyId}/publish`)
   return data
 }
 
-export async function regenerateReply(reviewId: string): Promise<Reply> {
-  const { data } = await api.post(`/reviews/${reviewId}/regenerate-reply`)
+export async function regenerateReply(replyId: string): Promise<Reply> {
+  const { data } = await api.post(`/replies/${replyId}/regenerate`)
   return data
 }
 
@@ -159,17 +159,22 @@ export async function flagReview(reviewId: string, reason: string): Promise<Revi
 }
 
 export async function getBrandVoice(): Promise<BrandVoice> {
-  const { data } = await api.get('/brand-voice')
+  const { data } = await api.get('/brand')
   return data
 }
 
 export async function updateBrandVoice(bv: Partial<BrandVoice>): Promise<BrandVoice> {
-  const { data } = await api.put('/brand-voice', bv)
+  const { data } = await api.patch('/brand', bv)
   return data
 }
 
-export async function getAdminData(): Promise<any> {
-  const { data } = await api.get('/admin/data')
+export async function getAdminUsers(): Promise<any> {
+  const { data } = await api.get('/admin/users')
+  return data
+}
+
+export async function getAdminBusinesses(): Promise<any> {
+  const { data } = await api.get('/admin/businesses')
   return data
 }
 
@@ -179,8 +184,27 @@ export async function getAuditLogs(params?: { page?: number; page_size?: number 
 }
 
 export async function getUsageMetrics(): Promise<any> {
-  const { data } = await api.get('/admin/usage-metrics')
+  const { data } = await api.get('/admin/usage')
   return data
+}
+
+export async function getAdminHealth(): Promise<any> {
+  const { data } = await api.get('/admin/health')
+  return data
+}
+
+export async function getPlatforms(): Promise<PlatformConnection[]> {
+  const { data } = await api.get('/platforms')
+  return data
+}
+
+export async function connectPlatform(platform: string, credentials?: Record<string, any>): Promise<PlatformConnection> {
+  const { data } = await api.post('/platforms/connect', { platform, ...credentials })
+  return data
+}
+
+export async function disconnectPlatform(id: string): Promise<void> {
+  await api.post(`/platforms/${id}/disconnect`)
 }
 
 export default api

@@ -5,10 +5,11 @@ from datetime import datetime
 from typing import Optional
 from uuid import UUID
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, JSON, String, Text, Uuid, func
+from sqlalchemy import Boolean, DateTime, ForeignKey, JSON, String, Text, Uuid
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.database import Base
+from app.utils.helpers import now
 
 
 class ApiKey(Base):
@@ -34,5 +35,5 @@ class ApiKey(Base):
         DateTime(timezone=True), nullable=True
     )
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now()
+        DateTime(timezone=True), default=now
     )

@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
 import { Select } from '@/components/ui/select'
 import { cn } from '@/lib/utils'
 import {
@@ -12,7 +13,19 @@ import {
   X,
   SlidersHorizontal,
   Filter,
+  Bookmark,
+  Save,
+  Trash2,
 } from 'lucide-react'
+
+interface FilterPreset {
+  name: string
+  sentiment: string
+  platform: string
+  rating: number
+  riskLevel: string
+  dateRange: string
+}
 
 interface FiltersBarProps {
   search: string
@@ -29,6 +42,7 @@ interface FiltersBarProps {
   onDateRangeChange: (v: string) => void
   onClear: () => void
   hasFilters: boolean
+  activeFilterCount?: number
 }
 
 const sentimentOptions = [
@@ -85,8 +99,30 @@ export function FiltersBar({
   onDateRangeChange,
   onClear,
   hasFilters,
+  activeFilterCount = 0,
 }: FiltersBarProps) {
   const [mobileOpen, setMobileOpen] = useState(false)
+  const [presets, setPresets] = useState<FilterPreset[]>([])
+  const [showSavePreset, setShowSavePreset] = useState(false)
+
+  const saveCurrentAsPreset = () => {
+    const name = prompt('Preset name:')
+    if (!name) return
+    setPresets((p) => [...p, { name, sentiment, platform, rating, riskLevel, dateRange }])
+    setShowSavePreset(false)
+  }
+
+  const applyPreset = (preset: FilterPreset) => {
+    onSentimentChange(preset.sentiment)
+    onPlatformChange(preset.platform)
+    onRatingChange(preset.rating)
+    onRiskLevelChange(preset.riskLevel)
+    onDateRangeChange(preset.dateRange)
+  }
+
+  const removePreset = (index: number) => {
+    setPresets((p) => p.filter((_, i) => i !== index))
+  }
 
   return (
     <Card>
@@ -99,17 +135,27 @@ export function FiltersBar({
               placeholder="Search reviews..."
               value={search}
               onChange={(e) => onSearchChange(e.target.value)}
+              aria-label="Search reviews"
             />
           </div>
 
-          <Button
-            variant="outline"
-            size="sm"
-            className="lg:hidden"
-            onClick={() => setMobileOpen(!mobileOpen)}
-          >
-            <SlidersHorizontal className="h-4 w-4" />
-          </Button>
+          <div className="flex items-center gap-2">
+            {hasFilters && (
+              <Badge variant="secondary" className="text-xs gap-1" aria-label={`${activeFilterCount} active filters`}>
+                <Filter className="h-3 w-3" />
+                {activeFilterCount}
+              </Badge>
+            )}
+            <Button
+              variant="outline"
+              size="sm"
+              className="lg:hidden"
+              onClick={() => setMobileOpen(!mobileOpen)}
+              aria-label="Toggle filters"
+            >
+              <SlidersHorizontal className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
 
         <AnimatePresence>
@@ -118,7 +164,7 @@ export function FiltersBar({
               initial={{ height: 0, opacity: 0 }}
               animate={{ height: 'auto', opacity: 1 }}
               exit={{ height: 0, opacity: 0 }}
-              transition={{ duration: 0.2 }}
+              transition={{ duration: 0.25, ease: 'easeOut' }}
               className="overflow-hidden"
             >
               <div className="mt-3 flex flex-wrap items-center gap-3">
@@ -146,12 +192,13 @@ export function FiltersBar({
                   className="min-w-[140px]"
                 />
 
-                <div className="flex items-center gap-1">
+                <div className="flex items-center gap-1" role="group" aria-label="Rating filter">
                   {[1, 2, 3, 4, 5].map((star) => (
                     <button
                       key={star}
                       onClick={() => onRatingChange(star === rating ? 0 : star)}
                       className="transition-colors hover:scale-110"
+                      aria-label={`${star} star${star > 1 ? 's' : ''}`}
                     >
                       <Star
                         className={cn(
@@ -165,7 +212,7 @@ export function FiltersBar({
                   ))}
                 </div>
 
-                <div className="flex items-center gap-1 rounded-lg border p-0.5">
+                <div className="flex items-center gap-1 rounded-lg border p-0.5" role="group" aria-label="Date range">
                   {dateRangeOptions.map((opt) => (
                     <button
                       key={opt.value}
@@ -176,24 +223,67 @@ export function FiltersBar({
                           ? 'bg-primary text-primary-foreground'
                           : 'text-muted-foreground hover:text-foreground'
                       )}
+                      aria-label={opt.label}
                     >
                       {opt.label}
                     </button>
                   ))}
                 </div>
 
-                {hasFilters && (
+                <div className="flex items-center gap-1">
+                  {hasFilters && (
+                    <motion.div
+                      initial={{ opacity: 0, scale: 0.9 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.9 }}
+                    >
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={onClear}
+                        className="text-xs text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30"
+                        aria-label="Clear all filters"
+                      >
+                        <Trash2 className="mr-1 h-3.5 w-3.5" />
+                        Clear
+                      </Button>
+                    </motion.div>
+                  )}
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={onClear}
+                    onClick={() => setShowSavePreset(!showSavePreset)}
                     className="text-xs"
+                    aria-label="Save filter preset"
                   >
-                    <X className="mr-1 h-3.5 w-3.5" />
-                    Clear filters
+                    <Save className="mr-1 h-3.5 w-3.5" />
+                    Save
                   </Button>
-                )}
+                </div>
               </div>
+
+              {presets.length > 0 && (
+                <div className="mt-3 flex flex-wrap items-center gap-2">
+                  <Bookmark className="h-3 w-3 text-muted-foreground" />
+                  {presets.map((preset, i) => (
+                    <Badge
+                      key={i}
+                      variant="outline"
+                      className="cursor-pointer text-[10px] gap-1 group"
+                      onClick={() => applyPreset(preset)}
+                    >
+                      {preset.name}
+                      <button
+                        onClick={(e) => { e.stopPropagation(); removePreset(i) }}
+                        className="opacity-0 group-hover:opacity-100 transition-opacity"
+                        aria-label={`Remove preset ${preset.name}`}
+                      >
+                        <X className="h-2.5 w-2.5" />
+                      </button>
+                    </Badge>
+                  ))}
+                </div>
+              )}
             </motion.div>
           )}
         </AnimatePresence>

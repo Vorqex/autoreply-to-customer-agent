@@ -88,17 +88,6 @@ export function Sidebar({ open, onClose }: SidebarProps) {
               )}
               <Icon className="h-5 w-5 shrink-0" />
               <span>{item.label}</span>
-              {isActive && (
-                <motion.div
-                  layoutId="sidebar-active-bg"
-                  className="absolute inset-0 rounded-xl bg-indigo-50 dark:bg-indigo-950/50"
-                  transition={{ type: 'spring', stiffness: 500, damping: 35 }}
-                />
-              )}
-              <span className="relative z-10 flex items-center gap-3">
-                <Icon className="h-5 w-5 shrink-0" />
-                <span>{item.label}</span>
-              </span>
             </Link>
           )
         })}

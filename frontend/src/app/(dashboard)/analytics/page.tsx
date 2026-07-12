@@ -1,7 +1,7 @@
 'use client'
 
-import { useState } from 'react'
-import { motion } from 'framer-motion'
+import { useState, useCallback, useEffect } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 import {
   BarChart,
   Bar,
@@ -10,6 +10,7 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
+  Cell,
 } from 'recharts'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -32,7 +33,10 @@ import {
   FileText,
   BarChart3,
   Star,
+  RefreshCw,
+  X,
 } from 'lucide-react'
+import { PageTransition } from '@/components/layout/page-transition'
 
 type DateRange = '7' | '30' | '90' | 'custom'
 
@@ -75,51 +79,84 @@ const topTemplates = [
   { name: 'Welcome - New Customer', usage: 76, success_rate: 96 },
 ]
 
+const COLORS = ['#10B981', '#F59E0B', '#EF4444', '#991B1B']
+
 export default function AnalyticsPage() {
   const [dateRange, setDateRange] = useState<DateRange>('30')
   const days = dateRange === 'custom' ? 30 : parseInt(dateRange)
+  const [refreshing, setRefreshing] = useState(false)
+  const [dataTimestamp, setDataTimestamp] = useState(new Date())
+  const [drillDown, setDrillDown] = useState<{ label: string; value: number } | null>(null)
+  const [secondsAgo, setSecondsAgo] = useState(0)
 
-  const { data: stats, isLoading: statsLoading } = useDashboardStats()
-  const { data: sentimentData, isLoading: sentimentLoading } = useSentimentTrends(days)
-  const { data: platformData, isLoading: platformLoading } = usePlatformPerformance()
-  const { data: activityData, isLoading: activityLoading } = useMonthlyActivity()
+  const { data: stats, isLoading: statsLoading, refetch: refetchStats } = useDashboardStats()
+  const { data: sentimentData, isLoading: sentimentLoading, refetch: refetchSentiment } = useSentimentTrends(days)
+  const { data: platformData, isLoading: platformLoading, refetch: refetchPlatform } = usePlatformPerformance()
+  const { data: activityData, isLoading: activityLoading, refetch: refetchActivity } = useMonthlyActivity()
+
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true)
+    await Promise.all([refetchStats(), refetchSentiment(), refetchPlatform(), refetchActivity()])
+    setDataTimestamp(new Date())
+    setSecondsAgo(0)
+    setRefreshing(false)
+  }, [refetchStats, refetchSentiment, refetchPlatform, refetchActivity])
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setSecondsAgo(Math.floor((Date.now() - dataTimestamp.getTime()) / 1000))
+    }, 1000)
+    return () => clearInterval(interval)
+  }, [dataTimestamp])
 
   return (
-    <motion.div variants={container} initial="hidden" animate="show" className="space-y-6">
-      <motion.div variants={item} className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h2 className="text-2xl font-bold text-foreground">Analytics</h2>
-          <p className="text-sm text-muted-foreground">Track performance and trends across all platforms</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="flex items-center gap-1 rounded-xl border p-1">
-            {dateRangeOptions.map((opt) => (
-              <button
-                key={opt.value}
-                onClick={() => setDateRange(opt.value)}
-                className={cn(
-                  'rounded-lg px-3 py-1.5 text-xs font-medium transition-colors',
-                  dateRange === opt.value
-                    ? 'bg-primary text-primary-foreground shadow-sm'
-                    : 'text-muted-foreground hover:text-foreground'
-                )}
-              >
-                {opt.label}
-              </button>
-            ))}
+    <PageTransition>
+      <motion.div variants={container} initial="hidden" animate="show" className="space-y-6">
+        <motion.div variants={item} className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h2 className="text-2xl font-bold text-foreground">Analytics</h2>
+            <p className="text-sm text-muted-foreground">Track performance and trends across all platforms</p>
           </div>
-          <div className="flex items-center gap-1">
-            <Button variant="outline" size="sm">
-              <FileText className="mr-1.5 h-4 w-4" />
-              PDF
-            </Button>
-            <Button variant="outline" size="sm">
-              <Download className="mr-1.5 h-4 w-4" />
-              CSV
-            </Button>
+          <div className="flex items-center gap-2">
+            <Badge variant="outline" className="text-[10px] gap-1 text-muted-foreground">
+              Data as of {secondsAgo < 60 ? `${secondsAgo}s ago` : `${Math.floor(secondsAgo / 60)}m ago`}
+            </Badge>
+            <button
+              onClick={handleRefresh}
+              disabled={refreshing}
+              className="text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
+              aria-label="Refresh data"
+            >
+              <RefreshCw className={cn('h-4 w-4', refreshing && 'animate-spin')} />
+            </button>
+            <div className="flex items-center gap-1 rounded-xl border p-1">
+              {dateRangeOptions.map((opt) => (
+                <button
+                  key={opt.value}
+                  onClick={() => setDateRange(opt.value)}
+                  className={cn(
+                    'rounded-lg px-3 py-1.5 text-xs font-medium transition-colors',
+                    dateRange === opt.value
+                      ? 'bg-primary text-primary-foreground shadow-sm'
+                      : 'text-muted-foreground hover:text-foreground'
+                  )}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+            <div className="flex items-center gap-1">
+              <Button variant="outline" size="sm">
+                <FileText className="mr-1.5 h-4 w-4" />
+                PDF
+              </Button>
+              <Button variant="outline" size="sm">
+                <Download className="mr-1.5 h-4 w-4" />
+                CSV
+              </Button>
+            </div>
           </div>
-        </div>
-      </motion.div>
+        </motion.div>
 
       <motion.div variants={item} className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatsCard
@@ -221,7 +258,17 @@ export default function AnalyticsPage() {
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={280}>
-              <BarChart data={complaintData} layout="vertical" barCategoryGap="20%">
+              <BarChart
+                data={complaintData}
+                layout="vertical"
+                barCategoryGap="20%"
+                onClick={(e) => {
+                  if (e?.activeLabel) {
+                    const item = complaintData.find((c) => c.phrase === e.activeLabel)
+                    if (item) setDrillDown(item)
+                  }
+                }}
+              >
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" horizontal={false} />
                 <XAxis
                   type="number"
@@ -245,7 +292,7 @@ export default function AnalyticsPage() {
                   }}
                   cursor={{ fill: 'hsl(var(--muted) / 0.3)' }}
                 />
-                <Bar dataKey="count" fill="#EF4444" radius={[0, 4, 4, 0]} barSize={20} />
+                <Bar dataKey="count" fill="#EF4444" radius={[0, 4, 4, 0]} barSize={20} cursor="pointer" />
               </BarChart>
             </ResponsiveContainer>
           </CardContent>
@@ -306,6 +353,54 @@ export default function AnalyticsPage() {
           </CardContent>
         </Card>
       </motion.div>
+
+      <AnimatePresence>
+        {drillDown && (
+          <motion.div
+            initial={{ opacity: 0, y: 16, scale: 0.97 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 16, scale: 0.97 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/20 backdrop-blur-sm p-4"
+            onClick={() => setDrillDown(null)}
+          >
+            <motion.div
+              initial={{ scale: 0.95 }}
+              animate={{ scale: 1 }}
+              className="relative w-full max-w-md rounded-2xl border bg-card p-6 shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <button
+                onClick={() => setDrillDown(null)}
+                className="absolute right-4 top-4 text-muted-foreground hover:text-foreground transition-colors"
+                aria-label="Close detail panel"
+              >
+                <X className="h-4 w-4" />
+              </button>
+              <h3 className="text-lg font-semibold text-foreground">Complaint Detail</h3>
+              <div className="mt-4 space-y-4">
+                <div className="rounded-xl bg-muted p-4">
+                  <p className="text-sm font-medium text-muted-foreground">Phrase</p>
+                  <p className="text-lg font-semibold text-foreground">{drillDown.label}</p>
+                </div>
+                <div className="rounded-xl bg-muted p-4">
+                  <p className="text-sm font-medium text-muted-foreground">Occurrences</p>
+                  <p className="text-lg font-semibold text-foreground">{drillDown.value}</p>
+                </div>
+                <div className="rounded-xl bg-muted p-4">
+                  <p className="text-sm font-medium text-muted-foreground">Percentage of total</p>
+                  <p className="text-lg font-semibold text-foreground">
+                    {Math.round((drillDown.value / complaintData.reduce((a, b) => a + b.count, 0)) * 100)}%
+                  </p>
+                </div>
+              </div>
+              <Button className="mt-6 w-full" variant="default" onClick={() => setDrillDown(null)}>
+                Close
+              </Button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </motion.div>
+    </PageTransition>
   )
 }

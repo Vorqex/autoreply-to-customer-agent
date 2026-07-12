@@ -62,7 +62,7 @@ class KnowledgeService:
             title=title,
             content=content,
             embedding=embedding,
-            metadata=metadata or {},
+            extra_metadata=metadata or {},
             is_active=True,
         )
         self.db.add(entry)
