@@ -2,11 +2,10 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
-from typing import Any, Optional
+from typing import Optional
 from uuid import UUID
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, String, Text, func
-from sqlalchemy.dialects.postgresql import JSONB, UUID as PG_UUID
+from sqlalchemy import Boolean, DateTime, ForeignKey, JSON, String, Text, Uuid, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.database import Base
@@ -16,22 +15,22 @@ class BrandVoice(Base):
     __tablename__ = "brand_voices"
 
     id: Mapped[UUID] = mapped_column(
-        PG_UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+        Uuid(), primary_key=True, default=uuid.uuid4
     )
     business_id: Mapped[UUID] = mapped_column(
-        PG_UUID(as_uuid=True), ForeignKey("businesses.id", ondelete="CASCADE"), nullable=False, index=True
+        Uuid(), ForeignKey("businesses.id", ondelete="CASCADE"), nullable=False, index=True
     )
     tone: Mapped[str] = mapped_column(String(50), nullable=False, default="professional")
     style: Mapped[str] = mapped_column(String(50), nullable=False, default="formal")
     language: Mapped[str] = mapped_column(String(10), nullable=False, default="en")
     personality: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    values: Mapped[Optional[list[str]]] = mapped_column(JSONB, nullable=True, default=list)
-    keywords: Mapped[Optional[list[str]]] = mapped_column(JSONB, nullable=True, default=list)
-    forbidden_terms: Mapped[Optional[list[str]]] = mapped_column(JSONB, nullable=True, default=list)
-    custom_rules: Mapped[Optional[list[str]]] = mapped_column(JSONB, nullable=True, default=list)
+    values: Mapped[Optional[list[str]]] = mapped_column(JSON, nullable=True, default=list)
+    keywords: Mapped[Optional[list[str]]] = mapped_column(JSON, nullable=True, default=list)
+    forbidden_terms: Mapped[Optional[list[str]]] = mapped_column(JSON, nullable=True, default=list)
+    custom_rules: Mapped[Optional[list[str]]] = mapped_column(JSON, nullable=True, default=list)
     greeting_template: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     closing_template: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    sample_replies: Mapped[Optional[list[str]]] = mapped_column(JSONB, nullable=True, default=list)
+    sample_replies: Mapped[Optional[list[str]]] = mapped_column(JSON, nullable=True, default=list)
     is_default: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()

@@ -12,6 +12,16 @@ logger = logging.getLogger(__name__)
 _redis_pool = None
 
 
+async def close_redis():
+    global _redis_pool
+    if _redis_pool is not None:
+        try:
+            await _redis_pool.close()
+        except Exception:
+            pass
+        _redis_pool = None
+
+
 async def get_redis():
     global _redis_pool
     try:

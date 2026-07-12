@@ -56,13 +56,11 @@ async def lifespan(app: FastAPI):
         logger.warning("Redis connection failed: %s", exc)
     yield
     logger.info("Shutting down...")
-    from app.core.database import engine
-    await engine.dispose()
+    from app.core.database import engine as db_engine
+    await db_engine.dispose()
     try:
-        from app.core.redis import get_redis
-        r = await get_redis()
-        if r is not None:
-            await r.close()
+        from app.core.redis import close_redis
+        await close_redis()
     except Exception:
         pass
 
@@ -80,7 +78,7 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.CORS_ORIGINS,
+    allow_origins=settings.cors_origins_list,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

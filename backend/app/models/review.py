@@ -5,8 +5,7 @@ from datetime import datetime
 from typing import Any, Optional
 from uuid import UUID
 
-from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, String, Text, func
-from sqlalchemy.dialects.postgresql import JSONB, UUID as PG_UUID
+from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, JSON, String, Text, Uuid, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
@@ -16,10 +15,10 @@ class Review(Base):
     __tablename__ = "reviews"
 
     id: Mapped[UUID] = mapped_column(
-        PG_UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+        Uuid(), primary_key=True, default=uuid.uuid4
     )
     business_id: Mapped[UUID] = mapped_column(
-        PG_UUID(as_uuid=True), ForeignKey("businesses.id", ondelete="CASCADE"), nullable=False, index=True
+        Uuid(), ForeignKey("businesses.id", ondelete="CASCADE"), nullable=False, index=True
     )
     platform_review_id: Mapped[str] = mapped_column(
         String(255), nullable=False, index=True
@@ -38,7 +37,7 @@ class Review(Base):
     flag_reason: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     is_processed: Mapped[bool] = mapped_column(Boolean, default=False)
     platform_metadata: Mapped[Optional[dict[str, Any]]] = mapped_column(
-        JSONB, nullable=True, default=dict
+        JSON, nullable=True, default=dict
     )
     review_date: Mapped[Optional[datetime]] = mapped_column(
         DateTime(timezone=True), nullable=True

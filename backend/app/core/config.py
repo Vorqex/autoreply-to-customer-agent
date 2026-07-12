@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any, List, Optional
 
-from pydantic import PostgresDsn, field_validator
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -18,7 +18,7 @@ class Settings(BaseSettings):
     VERSION: str = "1.0.0"
     DEBUG: bool = False
 
-    DATABASE_URL: PostgresDsn
+    DATABASE_URL: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/autoreply"
     REDIS_URL: str = ""
     SECRET_KEY: str
     JWT_ALGORITHM: str = "HS256"
@@ -37,14 +37,11 @@ class Settings(BaseSettings):
 
     SENTRY_DSN: Optional[str] = None
 
-    CORS_ORIGINS: List[str] = ["http://localhost:3000"]
+    CORS_ORIGINS: str = "http://localhost:3000"
 
-    @field_validator("CORS_ORIGINS", mode="before")
-    @classmethod
-    def parse_cors_origins(cls, v: Any) -> List[str]:
-        if isinstance(v, str):
-            return [origin.strip() for origin in v.split(",") if origin.strip()]
-        return v
+    @property
+    def cors_origins_list(self) -> List[str]:
+        return [origin.strip() for origin in self.CORS_ORIGINS.split(",") if origin.strip()]
 
     CELERY_BROKER_URL: str
     CELERY_RESULT_BACKEND: str
