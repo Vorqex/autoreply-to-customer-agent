@@ -1,0 +1,134 @@
+databases:
+  - name: autoreply-db
+    plan: free
+    databaseName: autoreply
+    user: autoreply
+    ipAllowList: []
+
+services:
+  - type: redis
+    name: autoreply-redis
+    plan: free
+    maxmemoryPolicy: allkeys-lru
+    ipAllowList: []
+
+  - type: web
+    name: autoreply-backend
+    runtime: python
+    plan: free
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: bash entrypoint.render.sh
+    healthCheckPath: /health
+    envVars:
+      - key: PROJECT_NAME
+        value: AutoReply AI
+      - key: VERSION
+        value: 1.0.0
+      - key: DEBUG
+        value: false
+      - key: DATABASE_URL
+        fromDatabase:
+          name: autoreply-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          name: autoreply-redis
+          type: redis
+          property: connectionString
+      - key: CELERY_BROKER_URL
+        fromService:
+          name: autoreply-redis
+          type: redis
+          property: connectionString
+      - key: CELERY_RESULT_BACKEND
+        fromService:
+          name: autoreply-redis
+          type: redis
+          property: connectionString
+      - key: SECRET_KEY
+        generateValue: true
+      - key: JWT_ALGORITHM
+        value: HS256
+      - key: ACCESS_TOKEN_EXPIRE_MINUTES
+        value: "30"
+      - key: REFRESH_TOKEN_EXPIRE_DAYS
+        value: "7"
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: OPENAI_MODEL
+        value: gpt-4o
+      - key: EMBEDDING_MODEL
+        value: text-embedding-3-small
+      - key: VECTOR_DB_TYPE
+        value: pinecone
+      - key: PINECONE_API_KEY
+        sync: false
+      - key: PINECONE_ENVIRONMENT
+        value: us-east-1
+      - key: PINECONE_INDEX_NAME
+        value: autoreply
+      - key: SENTRY_DSN
+        sync: false
+      - key: CORS_ORIGINS
+        value: https://autoreply-ai.vercel.app
+      - key: RATE_LIMIT
+        value: "100/minute"
+      - key: AI_QUALITY_THRESHOLD
+        value: "0.85"
+      - key: SAFETY_SCORE_THRESHOLD
+        value: "0.90"
+      - key: ENABLE_AUDIT_LOG
+        value: "true"
+      - key: DEFAULT_TENANT_PLAN
+        value: starter
+      - key: SMTP_HOST
+        sync: false
+      - key: SMTP_PORT
+        value: "587"
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASSWORD
+        sync: false
+      - key: SMTP_FROM_EMAIL
+        value: noreply@autoreply.ai
+      - key: WEBHOOK_SECRET
+        sync: false
+      - key: PYTHON_VERSION
+        value: "3.11.9"
+
+  - type: worker
+    name: autoreply-celery-worker
+    runtime: python
+    plan: free
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: celery -A app.workers.celery_app worker -l info --concurrency=2
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: autoreply-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          name: autoreply-redis
+          type: redis
+          property: connectionString
+      - key: CELERY_BROKER_URL
+        fromService:
+          name: autoreply-redis
+          type: redis
+          property: connectionString
+      - key: CELERY_RESULT_BACKEND
+        fromService:
+          name: autoreply-redis
+          type: redis
+          property: connectionString
+      - key: SECRET_KEY
+        generateValue: true
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: PINECONE_API_KEY
+        sync: false
+      - key: PYTHON_VERSION
+        value: "3.11.9"

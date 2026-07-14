@@ -22,6 +22,7 @@ build/
 # Environment
 .env
 .env.local
+.env.production
 *.log
 
 # OS
@@ -40,4 +41,3 @@ docker/ssl/
 *.swo
 
 # Project specific
-data/agent/*.json

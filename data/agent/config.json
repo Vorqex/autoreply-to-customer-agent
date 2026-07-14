@@ -1,0 +1,12 @@
+{
+  "name": "AutoReply Agent",
+  "version": "1.0.0",
+  "model": "gpt-4",
+  "temperature": 0.7,
+  "max_tokens": 300,
+  "tone": "professional",
+  "languages": ["en"],
+  "auto_reply_enabled": true,
+  "review_batch_size": 10,
+  "schedule_interval_minutes": 60
+}

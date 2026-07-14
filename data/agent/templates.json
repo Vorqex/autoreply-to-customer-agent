@@ -1,0 +1,20 @@
+[
+  {
+    "name": "Thank you",
+    "trigger": "positive",
+    "template": "Thank you for your kind words, {customer_name}! We're thrilled you had a great experience and look forward to serving you again.",
+    "variables": ["customer_name"]
+  },
+  {
+    "name": "Apology",
+    "trigger": "negative",
+    "template": "We're sorry to hear about your experience, {customer_name}. Please reach out to our support team at {support_email} so we can make things right.",
+    "variables": ["customer_name", "support_email"]
+  },
+  {
+    "name": "Neutral",
+    "trigger": "neutral",
+    "template": "Thanks for your feedback, {customer_name}. We appreciate your input and will use it to improve our services.",
+    "variables": ["customer_name"]
+  }
+]

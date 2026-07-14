@@ -255,6 +255,144 @@ autoreply-ai/
 
 ---
 
+---
+
+## Deployment
+
+### Architecture
+
+```
+                         ┌──────────────────────────┐
+                         │        Vercel             │
+                         │   Next.js Frontend        │
+                         │   https://autoreply-ai...  │
+                         └──────────┬───────────────┘
+                                    │ HTTPS /api/v1/*
+                                    ▼
+                    ┌───────────────────────────────┐
+                    │      Render / Railway          │
+                    │                                │
+                    │  ┌─────────────────────────┐   │
+                    │  │  Web: FastAPI Backend   │   │
+                    │  │  :8000                  │   │
+                    │  └────────┬────────────────┘   │
+                    │           │                     │
+                    │      ┌────┴────┐               │
+                    │      ▼         ▼                │
+                    │  ┌────────┐ ┌──────┐           │
+                    │  │Postgres│ │Redis │           │
+                    │  └────────┘ └──────┘           │
+                    │                                │
+                    │  ┌─────────────────────────┐   │
+                    │  │  Worker: Celery         │   │
+                    │  │  Async tasks            │   │
+                    │  └─────────────────────────┘   │
+                    └────────────────────────────────┘
+```
+
+### Option 1: Vercel (Frontend) + Render (Backend) — Recommended
+
+#### Prerequisites
+
+- [Vercel](https://vercel.com) account (GitHub login)
+- [Render](https://render.com) account (GitHub login)
+- OpenAI API key
+- (Optional) Pinecone API key for vector search
+
+#### Deploy Backend on Render
+
+1. Push your repository to GitHub
+2. Go to [Render Dashboard](https://dashboard.render.com) → **New +** → **Blueprint**
+3. Connect your GitHub repo
+4. Render automatically detects `render.yaml` and creates:
+   - **PostgreSQL** database (`autoreply-db`)
+   - **Redis** instance (`autoreply-redis`)
+   - **Web Service** (`autoreply-backend`) — FastAPI
+   - **Worker** (`autoreply-celery-worker`) — Celery tasks
+5. After creation, go to each service and set the **secret environment variables** marked as `sync: false`:
+   - `OPENAI_API_KEY` — Your OpenAI API key
+   - `PINECONE_API_KEY` — (optional) For vector search
+   - `SENTRY_DSN` — (optional) Error monitoring
+   - `SECRET_KEY` — Auto-generated, but you can override
+6. Wait for the build to finish, then note your backend URL:
+   ```
+   https://autoreply-backend.onrender.com
+   ```
+7. Verify health: `curl https://autoreply-backend.onrender.com/health`
+
+#### Deploy Frontend on Vercel
+
+1. In **Vercel Dashboard** → **Add New** → **Project**
+2. Import your GitHub repository
+3. Vercel auto-detects `vercel.json` with `rootDirectory: "frontend"`
+4. **Environment Variables** (required):
+   ```
+   NEXT_PUBLIC_API_URL=https://autoreply-backend.onrender.com/api/v1
+   NEXT_PUBLIC_APP_URL=https://autoreply-ai.vercel.app
+   ```
+5. Click **Deploy**
+6. Vercel builds and deploys your Next.js frontend
+
+#### Post-Deployment
+
+1. Update `CORS_ORIGINS` on Render:
+   ```env
+   CORS_ORIGINS=https://autoreply-ai.vercel.app
+   ```
+2. Test the full flow:
+   - Visit your Vercel URL
+   - Create an account
+   - Verify API communication works
+
+### Option 2: Vercel (Frontend) + Railway (Backend)
+
+#### Deploy Backend on Railway
+
+1. Push to GitHub
+2. Go to [Railway Dashboard](https://railway.app/dashboard) → **New Project**
+3. Choose **Deploy from GitHub repo**
+4. Railway auto-detects the `backend/` directory
+5. Add Railway services:
+   - **PostgreSQL** plugin
+   - **Redis** plugin
+   - **Web Service** — `cd backend && uvicorn app.main:app --host 0.0.0.0 --port $PORT`
+   - **Worker** — `cd backend && celery -A app.workers.celery_app worker -l info`
+6. Configure environment variables (same as Render above)
+7. Deploy
+
+#### Deploy Frontend on Vercel
+
+Same steps as Option 1.
+
+### Option 3: Docker Compose (Self-Hosted)
+
+```bash
+# Build and start all services
+docker compose up -d
+
+# Run migrations
+docker compose exec backend alembic upgrade head
+
+# Check health
+curl http://localhost:8000/health
+```
+
+### Environment Variables Reference
+
+| Variable | Required | Description | Example |
+|---|---|---|---|
+| `NEXT_PUBLIC_API_URL` | ✅ (Vercel) | Backend API URL | `https://api.autoreply.ai/api/v1` |
+| `NEXT_PUBLIC_APP_URL` | ✅ (Vercel) | Frontend URL | `https://autoreply.ai` |
+| `DATABASE_URL` | ✅ (Backend) | PostgreSQL connection | `postgresql+asyncpg://...` |
+| `SECRET_KEY` | ✅ (Backend) | JWT signing secret (min 32 chars) | — |
+| `OPENAI_API_KEY` | ✅ (Backend) | OpenAI API key | `sk-...` |
+| `REDIS_URL` | ✅ (Backend) | Redis connection | `redis://...` |
+| `CELERY_BROKER_URL` | ✅ (Backend) | Celery broker (same as REDIS_URL) | `redis://.../1` |
+| `CELERY_RESULT_BACKEND` | ✅ (Backend) | Celery result backend | `redis://.../1` |
+| `CORS_ORIGINS` | ✅ (Backend) | Allowed CORS origins | `https://autoreply.ai` |
+
+---
+
 ## Contributing
 
 1. Fork the repository
