@@ -186,16 +186,16 @@ export default function SignupPage() {
           <label className="flex items-start gap-2 text-sm text-neutral-600 dark:text-neutral-400">
             <input
               type="checkbox"
-              className="mt-0.5 rounded border-neutral-300 text-indigo-600 focus:ring-indigo-500"
+              className="mt-0.5 rounded border-neutral-300 text-sky-600 focus:ring-sky-500"
               {...register('terms')}
             />
             <span>
               I agree to the{' '}
-              <Link href="/terms" className="font-medium text-indigo-600 hover:text-indigo-500">
+              <Link href="/terms" className="font-medium text-sky-600 hover:text-sky-500">
                 Terms of Service
               </Link>{' '}
               and{' '}
-              <Link href="/privacy" className="font-medium text-indigo-600 hover:text-indigo-500">
+              <Link href="/privacy" className="font-medium text-sky-600 hover:text-sky-500">
                 Privacy Policy
               </Link>
             </span>
@@ -212,7 +212,7 @@ export default function SignupPage() {
 
       <motion.p variants={fadeItem} className="mt-6 text-center text-sm text-neutral-500 dark:text-neutral-400">
         Already have an account?{' '}
-        <Link href="/login" className="font-medium text-indigo-600 hover:text-indigo-500 dark:text-indigo-400">
+        <Link href="/login" className="font-medium text-sky-600 hover:text-sky-500 dark:text-sky-400">
           Sign in
         </Link>
       </motion.p>

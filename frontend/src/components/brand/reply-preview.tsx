@@ -103,9 +103,9 @@ export function ReplyPreview({ brandSettings, reviewText }: ReplyPreviewProps) {
           initial={{ opacity: 0, y: 4 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3 }}
-          className="rounded-xl border border-indigo-200 bg-indigo-50/50 p-4 dark:border-indigo-900 dark:bg-indigo-950/20"
+          className="rounded-xl border border-sky-200 bg-sky-50/50 p-4 dark:border-sky-900 dark:bg-sky-950/20"
         >
-          <p className="flex items-center gap-1 text-xs font-medium text-indigo-600 dark:text-indigo-400">
+          <p className="flex items-center gap-1 text-xs font-medium text-sky-600 dark:text-sky-400">
             <Bot className="h-3 w-3" />
             AI Reply
           </p>

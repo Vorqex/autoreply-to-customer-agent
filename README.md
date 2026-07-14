@@ -110,13 +110,13 @@ CELERY_RESULT_BACKEND=redis://localhost:6379/1
 
 ```bash
 # Build and start all services
-docker compose -f docker/docker-compose.yml up -d
+docker compose up -d
 
 # Check service health
 curl http://localhost:8000/api/v1/health
 
 # View logs
-docker compose -f docker/docker-compose.yml logs -f
+docker compose logs -f
 ```
 
 ### 4. Run Locally (Development)
@@ -149,16 +149,16 @@ The app will be available at:
 
 ```bash
 # Build images
-docker compose -f docker/docker-compose.yml build
+docker compose build
 
 # Start services
-docker compose -f docker/docker-compose.yml up -d
+docker compose up -d
 
 # Run migrations
-docker compose -f docker/docker-compose.yml exec backend alembic upgrade head
+docker compose exec backend alembic upgrade head
 
 # Scale workers
-docker compose -f docker/docker-compose.yml up -d --scale celery-worker=3
+docker compose up -d --scale celery-worker=3
 ```
 
 ### Environment Variables Reference
@@ -234,17 +234,23 @@ autoreply-ai/
 │   ├── Dockerfile
 │   ├── next.config.js
 │   └── package.json
+├── data/
+│   └── agent/               # Agent configuration & templates
 ├── docker/
-│   ├── docker-compose.yml
 │   ├── nginx.conf
 │   └── entrypoint.sh
 ├── .github/
-│   └── workflows/
-│       ├── ci.yml
-│       └── deploy.yml
+│   ├── workflows/
+│   │   ├── ci.yml
+│   │   └── deploy.yml
+│   └── CODEOWNERS
+├── docker-compose.yml
 ├── .gitignore
+├── CONTRIBUTING.md
+├── LICENSE
 ├── Makefile
-└── README.md
+├── README.md
+└── SECURITY.md
 ```
 
 ---

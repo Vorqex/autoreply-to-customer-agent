@@ -213,7 +213,7 @@ export default function BrandVoicePage() {
                       className={cn(
                         'rounded-xl border px-3 py-1.5 text-xs font-medium transition-all',
                         form.industry === preset.label
-                          ? 'border-indigo-500 bg-indigo-50 text-indigo-700 dark:border-indigo-400 dark:bg-indigo-950/50 dark:text-indigo-300'
+                          ? 'border-sky-500 bg-sky-50 text-sky-700 dark:border-sky-400 dark:bg-sky-950/50 dark:text-sky-300'
                           : 'border-input hover:bg-accent hover:border-foreground/20'
                       )}
                     >
@@ -311,7 +311,7 @@ export default function BrandVoicePage() {
                       className={cn(
                         'flex flex-col items-center gap-1 rounded-xl border p-3 text-xs transition-all',
                         form.tone === tone.value
-                          ? 'border-indigo-500 bg-indigo-50 text-indigo-700 dark:border-indigo-400 dark:bg-indigo-950/50 dark:text-indigo-300'
+                          ? 'border-sky-500 bg-sky-50 text-sky-700 dark:border-sky-400 dark:bg-sky-950/50 dark:text-sky-300'
                           : 'border-input hover:bg-accent'
                       )}
                     >
@@ -342,7 +342,7 @@ export default function BrandVoicePage() {
                       className={cn(
                         'flex-1 rounded-xl border p-3 text-center text-sm transition-all',
                         form.reply_length === rl.value
-                          ? 'border-indigo-500 bg-indigo-50 text-indigo-700 dark:border-indigo-400 dark:bg-indigo-950/50 dark:text-indigo-300'
+                          ? 'border-sky-500 bg-sky-50 text-sky-700 dark:border-sky-400 dark:bg-sky-950/50 dark:text-sky-300'
                           : 'border-input hover:bg-accent'
                       )}
                     >
@@ -379,7 +379,7 @@ export default function BrandVoicePage() {
                   onClick={() => update('emoji_preference', !form.emoji_preference)}
                   className={cn(
                     'relative h-6 w-11 rounded-full transition-colors',
-                    form.emoji_preference ? 'bg-indigo-600' : 'bg-neutral-300 dark:bg-neutral-600'
+                    form.emoji_preference ? 'bg-sky-600' : 'bg-neutral-300 dark:bg-neutral-600'
                   )}
                 >
                   <span
@@ -401,7 +401,7 @@ export default function BrandVoicePage() {
                   max="5"
                   value={form.professional_level || 3}
                   onChange={(e) => update('professional_level', parseInt(e.target.value))}
-                  className="w-full accent-indigo-600"
+                  className="w-full accent-sky-600"
                 />
                 <div className="flex justify-between text-xs text-muted-foreground">
                   <span>Casual</span>
@@ -419,7 +419,7 @@ export default function BrandVoicePage() {
                   max="5"
                   value={form.personalization_level || 3}
                   onChange={(e) => update('personalization_level', parseInt(e.target.value))}
-                  className="w-full accent-indigo-600"
+                  className="w-full accent-sky-600"
                 />
                 <div className="flex justify-between text-xs text-muted-foreground">
                   <span>Generic</span>
@@ -468,8 +468,8 @@ export default function BrandVoicePage() {
 
               <Separator />
 
-              <div className="rounded-xl border border-indigo-200 bg-indigo-50/50 p-3 dark:border-indigo-900 dark:bg-indigo-950/20">
-                <p className="flex items-center gap-1 text-xs font-medium text-indigo-600 dark:text-indigo-400">
+              <div className="rounded-xl border border-sky-200 bg-sky-50/50 p-3 dark:border-sky-900 dark:bg-sky-950/20">
+                <p className="flex items-center gap-1 text-xs font-medium text-sky-600 dark:text-sky-400">
                   <Bot className="h-3 w-3" />
                   AI Reply
                 </p>

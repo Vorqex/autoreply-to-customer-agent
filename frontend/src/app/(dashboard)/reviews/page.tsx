@@ -98,7 +98,7 @@ export default function ReviewsPage() {
     setPage(1)
   }
 
-  const hasFilters = search || sentiment || platform || rating || riskLevel
+  const hasFilters = !!(search || sentiment || platform || rating || riskLevel)
 
   const toggleSelect = (id: string) => {
     setSelected((prev) => {
@@ -294,14 +294,14 @@ export default function ReviewsPage() {
                           type="checkbox"
                           checked={selected.has(review.id)}
                           onChange={() => toggleSelect(review.id)}
-                          className="rounded border-neutral-300 text-indigo-600 focus:ring-indigo-500"
+                          className="rounded border-neutral-300 text-sky-600 focus:ring-sky-500"
                           aria-label={`Select review by ${review.customer_name}`}
                         />
                       </label>
                       <Link
                         href={`/reviews/${review.id}`}
                         className={cn(
-                          focusedIndex === idx && 'ring-2 ring-indigo-400 rounded-2xl'
+                          focusedIndex === idx && 'ring-2 ring-sky-400 rounded-2xl'
                         )}
                       >
                         <ReviewCard review={review} />
@@ -318,7 +318,7 @@ export default function ReviewsPage() {
                       type="checkbox"
                       checked={data.items.length > 0 && selected.size === data.items.length}
                       onChange={toggleSelectAll}
-                      className="rounded border-neutral-300 text-indigo-600 focus:ring-indigo-500"
+                      className="rounded border-neutral-300 text-sky-600 focus:ring-sky-500"
                       aria-label="Select all reviews"
                     />
                     Customer
@@ -333,7 +333,7 @@ export default function ReviewsPage() {
                     key={review.id}
                     className={cn(
                       'grid sm:grid-cols-6 gap-4 items-center rounded-xl border p-4 transition-all hover:bg-accent/50',
-                      focusedIndex === idx && 'ring-2 ring-indigo-400',
+                      focusedIndex === idx && 'ring-2 ring-sky-400',
                       selected.has(review.id) && 'bg-primary/5 border-primary/30'
                     )}
                     role="row"
@@ -343,7 +343,7 @@ export default function ReviewsPage() {
                         type="checkbox"
                         checked={selected.has(review.id)}
                         onChange={() => toggleSelect(review.id)}
-                        className="rounded border-neutral-300 text-indigo-600 focus:ring-indigo-500 shrink-0"
+                        className="rounded border-neutral-300 text-sky-600 focus:ring-sky-500 shrink-0"
                         aria-label={`Select ${review.customer_name}`}
                       />
                       <Link href={`/reviews/${review.id}`} className="min-w-0">

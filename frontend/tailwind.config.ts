@@ -13,7 +13,7 @@ const config: Config = {
         primary: {
           DEFAULT: "hsl(var(--primary))",
           foreground: "hsl(var(--primary-foreground))",
-          50: '#EEF2FF', 100: '#E0E7FF', 200: '#C7D2FE', 300: '#A5B4FC', 400: '#818CF8', 500: '#6366F1',
+          50: '#F0F9FF', 100: '#E0F2FE', 200: '#BAE6FD', 300: '#7DD3FC', 400: '#38BDF8', 500: '#0EA5E9',
         },
         secondary: {
           DEFAULT: "hsl(var(--secondary))",
@@ -39,7 +39,6 @@ const config: Config = {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
-        neutral: { 50: '#FAFAFA', 100: '#F5F5F5', 200: '#E5E5E5', 300: '#D4D4D4', 400: '#A3A3A3', 500: '#737373', 600: '#525252', 700: '#404040', 800: '#262626', 900: '#171717', 950: '#0A0A0A' },
       },
       fontFamily: { sans: ['var(--font-inter)', 'system-ui', 'sans-serif'], display: ['Cal Sans', 'Inter', 'system-ui', 'sans-serif'] },
       animation: { 'slide-up': 'slideUp 0.5s ease-out', 'fade-in': 'fadeIn 0.3s ease-out', 'scale-in': 'scaleIn 0.2s ease-out', shimmer: 'shimmer 2s infinite linear' },

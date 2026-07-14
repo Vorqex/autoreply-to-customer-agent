@@ -11,7 +11,7 @@ import { Separator } from '@/components/ui/separator'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Select } from '@/components/ui/select'
 import { cn, formatDate } from '@/lib/utils'
-import api from '@/lib/api'
+import * as api from '@/lib/api'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { toast } from 'sonner'
 import {
@@ -269,7 +269,7 @@ export default function SettingsPage() {
                       onClick={() => setNotifForm((p) => ({ ...p, email_notifications: !p.email_notifications }))}
                       className={cn(
                         'relative h-6 w-11 rounded-full transition-colors',
-                        notifForm.email_notifications ? 'bg-indigo-600' : 'bg-neutral-300 dark:bg-neutral-600'
+                        notifForm.email_notifications ? 'bg-sky-600' : 'bg-neutral-300 dark:bg-neutral-600'
                       )}
                     >
                       <span
@@ -374,7 +374,7 @@ export default function SettingsPage() {
                         onClick={handleToggleMfa}
                         className={cn(
                           'relative h-6 w-11 rounded-full transition-colors',
-                          mfaEnabled ? 'bg-indigo-600' : 'bg-neutral-300 dark:bg-neutral-600'
+                          mfaEnabled ? 'bg-sky-600' : 'bg-neutral-300 dark:bg-neutral-600'
                         )}
                       >
                         <span
@@ -399,7 +399,7 @@ export default function SettingsPage() {
                         key={session.id}
                         className={cn(
                           'flex items-center justify-between rounded-xl border p-4 transition-colors',
-                          session.is_current && 'border-indigo-200 bg-indigo-50/50 dark:border-indigo-900 dark:bg-indigo-950/20'
+                          session.is_current && 'border-sky-200 bg-sky-50/50 dark:border-sky-900 dark:bg-sky-950/20'
                         )}
                       >
                         <div className="flex items-center gap-3">

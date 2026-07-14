@@ -1,0 +1,12 @@
+# Global owners
+* @your-org/maintainers
+
+# Backend
+/backend/ @your-org/backend-team
+
+# Frontend
+/frontend/ @your-org/frontend-team
+
+# Infrastructure
+/docker/ @your-org/infra-team
+/docker-compose.yml @your-org/infra-team

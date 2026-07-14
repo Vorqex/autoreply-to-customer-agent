@@ -52,13 +52,13 @@ const iconMap: Record<string, LucideIcon> = {
 
 const exampleReplies: Record<string, string> = {
   professional: 'Thank you for your valuable feedback. We take your concerns seriously and will address them promptly.',
-  friendly: 'Hey, thanks so much for stopping by! We really appreciate your kind words and can't wait to see you again!',
+  friendly: 'Hey, thanks so much for stopping by! We really appreciate your kind words and can\'t wait to see you again!',
   luxury: 'We are truly honored by your gracious review. It is our privilege to provide you with an exceptional experience.',
   corporate: 'We appreciate you taking the time to share your experience. Your feedback has been forwarded to our management team.',
   formal: 'We respectfully acknowledge your comments and assure you that the necessary actions will be taken.',
   casual: 'Thanks a bunch! So glad you had a great time with us. Come back soon!',
   empathetic: 'We are so sorry to hear about your experience. Your feelings are completely valid, and we want to make this right.',
-  playful: 'Woohoo! You just made our day! Thanks for the awesome review - you're the best!',
+  playful: 'Woohoo! You just made our day! Thanks for the awesome review - you\'re the best!',
   minimal: 'Thank you. We appreciate your feedback.',
   premium: 'We are delighted by your generous review. Excellence is our standard, and you deserve nothing less.',
   hospitality: 'Thank you for choosing us. It was our pleasure to serve you, and we hope to welcome you back soon.',
@@ -91,7 +91,7 @@ export function ToneSelector({ value, onChange, options, usageCounts = {} }: Ton
             className={cn(
               'relative flex flex-col items-center gap-1.5 rounded-xl border p-3 text-xs transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
               isActive
-                ? 'border-indigo-500 bg-indigo-50 text-indigo-700 shadow-sm dark:border-indigo-400 dark:bg-indigo-950/50 dark:text-indigo-300'
+                ? 'border-sky-500 bg-sky-50 text-sky-700 shadow-sm dark:border-sky-400 dark:bg-sky-950/50 dark:text-sky-300'
                 : 'border-input hover:bg-accent hover:border-muted-foreground/30 text-muted-foreground'
             )}
             aria-label={`${tone.label} tone${tone.description ? ` - ${tone.description}` : ''}`}
@@ -101,12 +101,12 @@ export function ToneSelector({ value, onChange, options, usageCounts = {} }: Ton
             {isActive && (
               <motion.div
                 layoutId="tone-active-bg"
-                className="absolute inset-0 rounded-xl bg-indigo-50 dark:bg-indigo-950/30"
+                className="absolute inset-0 rounded-xl bg-sky-50 dark:bg-sky-950/30"
                 transition={{ type: 'spring', stiffness: 400, damping: 30 }}
               />
             )}
             {isMostUsed && (
-              <Badge className="absolute -right-1.5 -top-1.5 z-20 text-[8px] px-1 py-0 bg-indigo-500" aria-label="Most used tone">
+              <Badge className="absolute -right-1.5 -top-1.5 z-20 text-[8px] px-1 py-0 bg-sky-500" aria-label="Most used tone">
                 Top
               </Badge>
             )}
@@ -114,7 +114,7 @@ export function ToneSelector({ value, onChange, options, usageCounts = {} }: Ton
               className={cn(
                 'relative z-10 rounded-lg p-2 transition-colors',
                 isActive
-                  ? 'bg-indigo-100 text-indigo-600 dark:bg-indigo-900 dark:text-indigo-300'
+                  ? 'bg-sky-100 text-sky-600 dark:bg-sky-900 dark:text-sky-300'
                   : 'bg-muted text-muted-foreground'
               )}
             >
@@ -131,7 +131,7 @@ export function ToneSelector({ value, onChange, options, usageCounts = {} }: Ton
                 <motion.div
                   initial={{ width: 0 }}
                   animate={{ width: `${(usage / maxUsage) * 100}%` }}
-                  className="h-full rounded-full bg-indigo-400"
+                  className="h-full rounded-full bg-sky-400"
                 />
               </div>
             )}

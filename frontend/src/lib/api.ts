@@ -48,9 +48,9 @@ api.interceptors.response.use(
   }
 )
 
-export async function login(email: string, password: string): Promise<{ user: User; access_token: string; refresh_token: string }> {
+export async function login(email: string, password: string): Promise<{ user_id: string; access_token: string; refresh_token: string; token_type: string }> {
   const { data } = await api.post('/auth/login', { email, password })
-  return data
+  return data.data
 }
 
 export async function signup(data: {
@@ -60,7 +60,7 @@ export async function signup(data: {
   password: string
 }): Promise<{ user: User; message: string }> {
   const { data: res } = await api.post('/auth/register', data)
-  return res
+  return res.data
 }
 
 export async function verifyEmail(token: string): Promise<{ message: string }> {
@@ -80,7 +80,7 @@ export async function resetPassword(token: string, password: string): Promise<{ 
 
 export async function getMe(): Promise<User> {
   const { data } = await api.get('/auth/me')
-  return data
+  return data.data
 }
 
 export async function getDashboardStats(): Promise<DashboardStats> {

@@ -39,7 +39,7 @@ export default function LoginPage() {
   const login = useAuthStore((s) => s.login)
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
-  const emailRef = useRef<HTMLInputElement>(null)
+  const emailRef = useRef<HTMLInputElement>(null as unknown as HTMLInputElement)
 
   const {
     register,
@@ -98,7 +98,7 @@ export default function LoginPage() {
               leftIcon={<Mail className="h-4 w-4" />}
               error={errors.email?.message}
               {...register('email')}
-              ref={(e) => { register('email').ref(e); emailRef.current = e }}
+               ref={(e: HTMLInputElement | null) => { register('email').ref(e); if (e) emailRef.current = e }}
             />
           </motion.div>
 
@@ -120,10 +120,10 @@ export default function LoginPage() {
 
           <motion.div variants={item} className="flex items-center justify-between">
             <label className="flex items-center gap-2 text-sm text-neutral-600 dark:text-neutral-400 cursor-pointer">
-              <input type="checkbox" className="rounded border-neutral-300 text-indigo-600 focus:ring-indigo-500" />
+              <input type="checkbox" className="rounded border-neutral-300 text-sky-600 focus:ring-sky-500" />
               Remember me
             </label>
-            <Link href="/forgot-password" className="text-sm font-medium text-indigo-600 hover:text-indigo-500 dark:text-indigo-400">
+            <Link href="/forgot-password" className="text-sm font-medium text-sky-600 hover:text-sky-500 dark:text-sky-400">
               Forgot password?
             </Link>
           </motion.div>
@@ -158,7 +158,7 @@ export default function LoginPage() {
 
         <motion.p variants={item} className="mt-6 text-center text-sm text-neutral-500 dark:text-neutral-400">
           Don't have an account?{' '}
-          <Link href="/signup" className="font-medium text-indigo-600 hover:text-indigo-500 dark:text-indigo-400">
+          <Link href="/signup" className="font-medium text-sky-600 hover:text-sky-500 dark:text-sky-400">
             Sign up
           </Link>
         </motion.p>

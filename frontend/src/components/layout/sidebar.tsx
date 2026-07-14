@@ -21,6 +21,7 @@ import {
   Sun,
   Moon,
   X,
+  Bot,
 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 
@@ -29,6 +30,7 @@ const navItems = [
   { href: '/reviews', label: 'Reviews', icon: MessageSquare },
   { href: '/replies', label: 'Replies', icon: Send },
   { href: '/brand', label: 'Brand Voice', icon: Mic },
+  { href: '/agent', label: 'Agent', icon: Bot },
   { href: '/analytics', label: 'Analytics', icon: BarChart3 },
   { href: '/admin', label: 'Admin', icon: Shield },
   { href: '/settings', label: 'Settings', icon: Settings },
@@ -51,10 +53,10 @@ export function Sidebar({ open, onClose }: SidebarProps) {
     <div className="flex h-full flex-col">
       <div className="flex items-center justify-between px-6 py-5">
         <Link href="/dashboard" className="flex items-center gap-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 text-white text-sm font-bold">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-emerald-500 to-sky-600 text-white text-sm font-bold">
             A
           </div>
-          <span className="bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-lg font-bold text-transparent dark:from-indigo-400 dark:to-purple-400">
+          <span className="bg-gradient-to-r from-emerald-500 to-sky-500 bg-clip-text text-lg font-bold text-transparent dark:from-emerald-400 dark:to-sky-400">
             AutoReply AI
           </span>
         </Link>
@@ -75,14 +77,14 @@ export function Sidebar({ open, onClose }: SidebarProps) {
               className={cn(
                 'group relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200',
                 isActive
-                  ? 'bg-indigo-50 text-indigo-700 dark:bg-indigo-950/50 dark:text-indigo-300'
+                  ? 'bg-sky-50 text-sky-700 dark:bg-sky-950/50 dark:text-sky-300'
                   : 'text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900 dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-neutral-200'
               )}
             >
               {isActive && (
                 <motion.div
                   layoutId="sidebar-active"
-                  className="absolute left-0 top-1/2 h-6 w-1 -translate-y-1/2 rounded-r-full bg-indigo-600 dark:bg-indigo-400"
+                  className="absolute left-0 top-1/2 h-6 w-1 -translate-y-1/2 rounded-r-full bg-sky-600 dark:bg-sky-400"
                   transition={{ type: 'spring', stiffness: 500, damping: 35 }}
                 />
               )}

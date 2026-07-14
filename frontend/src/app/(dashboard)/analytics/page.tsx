@@ -86,7 +86,7 @@ export default function AnalyticsPage() {
   const days = dateRange === 'custom' ? 30 : parseInt(dateRange)
   const [refreshing, setRefreshing] = useState(false)
   const [dataTimestamp, setDataTimestamp] = useState(new Date())
-  const [drillDown, setDrillDown] = useState<{ label: string; value: number } | null>(null)
+  const [drillDown, setDrillDown] = useState<{ phrase: string; count: number } | null>(null)
   const [secondsAgo, setSecondsAgo] = useState(0)
 
   const { data: stats, isLoading: statsLoading, refetch: refetchStats } = useDashboardStats()
@@ -380,16 +380,16 @@ export default function AnalyticsPage() {
               <div className="mt-4 space-y-4">
                 <div className="rounded-xl bg-muted p-4">
                   <p className="text-sm font-medium text-muted-foreground">Phrase</p>
-                  <p className="text-lg font-semibold text-foreground">{drillDown.label}</p>
+                  <p className="text-lg font-semibold text-foreground">{drillDown.phrase}</p>
                 </div>
                 <div className="rounded-xl bg-muted p-4">
                   <p className="text-sm font-medium text-muted-foreground">Occurrences</p>
-                  <p className="text-lg font-semibold text-foreground">{drillDown.value}</p>
+                  <p className="text-lg font-semibold text-foreground">{drillDown.count}</p>
                 </div>
                 <div className="rounded-xl bg-muted p-4">
                   <p className="text-sm font-medium text-muted-foreground">Percentage of total</p>
                   <p className="text-lg font-semibold text-foreground">
-                    {Math.round((drillDown.value / complaintData.reduce((a, b) => a + b.count, 0)) * 100)}%
+                    {Math.round((drillDown.count / complaintData.reduce((a, b) => a + b.count, 0)) * 100)}%
                   </p>
                 </div>
               </div>

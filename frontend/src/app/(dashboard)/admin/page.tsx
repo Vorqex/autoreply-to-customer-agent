@@ -127,7 +127,7 @@ const mockAuditLogs: AuditLog[] = Array.from({ length: 20 }).map((_, i) => ({
   user: ['john@example.com', 'jane@example.com', 'admin@autoreply.ai'][i % 3],
   action: ['workspace.created', 'reply.approved', 'user.invited', 'api_key.revoked', 'settings.updated'][i % 5],
   resource: ['Workspace #12', 'Review #45', 'User #8', 'API Key #3', 'Brand Voice'][i % 5],
-  details: ['Created new workspace for client', 'Approved reply for review #45', 'Invited user sarah@example.com', 'Revoked expired API key', 'Updated brand voice settings'],
+  details: ['Created new workspace for client', 'Approved reply for review #45', 'Invited user sarah@example.com', 'Revoked expired API key', 'Updated brand voice settings'][i % 5],
 }))
 
 export default function AdminPage() {

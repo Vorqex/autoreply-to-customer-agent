@@ -23,6 +23,7 @@ import { Skeleton, CardSkeleton } from '@/components/ui/skeleton'
 import { cn, formatRelativeTime, sentimentColor } from '@/lib/utils'
 import { useAuthStore } from '@/stores/auth-store'
 import * as api from '@/lib/api'
+import Link from 'next/link'
 import {
   Inbox,
   Clock,
@@ -32,6 +33,8 @@ import {
   HelpCircle,
   RefreshCw,
   InboxIcon,
+  Folder,
+  FileText,
 } from 'lucide-react'
 import { PageTransition } from '@/components/layout/page-transition'
 
@@ -74,7 +77,7 @@ function SparklineChart({ data, color }: { data: { value: number }[]; color: str
 }
 
 const statCards = [
-  { key: 'total_reviews', label: 'Total Reviews', icon: Inbox, color: 'text-indigo-600 bg-indigo-100 dark:bg-indigo-950 dark:text-indigo-400', sparkColor: '#6366F1' },
+  { key: 'total_reviews', label: 'Total Reviews', icon: Inbox, color: 'text-sky-600 bg-sky-100 dark:bg-sky-950 dark:text-sky-400', sparkColor: '#0EA5E9' },
   { key: 'pending_replies', label: 'Pending Replies', icon: Clock, color: 'text-amber-600 bg-amber-100 dark:bg-amber-950 dark:text-amber-400', sparkColor: '#F59E0B' },
   { key: 'auto_replied', label: 'Auto-Replied', icon: Bot, color: 'text-emerald-600 bg-emerald-100 dark:bg-emerald-950 dark:text-emerald-400', sparkColor: '#10B981' },
   { key: 'manual_replies', label: 'Manual Replies', icon: Edit3, color: 'text-blue-600 bg-blue-100 dark:bg-blue-950 dark:text-blue-400', sparkColor: '#3B82F6' },
@@ -127,6 +130,8 @@ export default function DashboardPage() {
     queryKey: ['recent-reviews'],
     queryFn: () => api.getReviews({ page: 1, page_size: 5, sort_by: 'created_at', sort_order: 'desc' }),
   })
+
+  const folderData = { file_count: 2, size: '~1.2 KB', files: ['config.json', 'templates.json'] }
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -227,7 +232,7 @@ export default function DashboardPage() {
               <motion.div
                 key={card.key}
                 whileHover={{ y: -4 }}
-                className="group relative overflow-hidden rounded-2xl border bg-card/80 backdrop-blur-xl shadow-sm transition-all duration-300 hover:shadow-xl hover:shadow-indigo-500/5"
+                className="group relative overflow-hidden rounded-2xl border bg-card/80 backdrop-blur-xl shadow-sm transition-all duration-300 hover:shadow-xl hover:shadow-sky-500/5"
               >
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between">
@@ -248,7 +253,7 @@ export default function DashboardPage() {
                     </div>
                   )}
                   <div className="pointer-events-none absolute -inset-px rounded-2xl opacity-0 transition-opacity group-hover:opacity-100">
-                    <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-indigo-500/5 via-transparent to-transparent" />
+                    <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-sky-500/5 via-transparent to-transparent" />
                   </div>
                 </CardContent>
               </motion.div>
@@ -302,8 +307,8 @@ export default function DashboardPage() {
                     <AreaChart data={monthlyActivity}>
                       <defs>
                         <linearGradient id="reviewsGrad" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="#6366F1" stopOpacity={0.3} />
-                          <stop offset="95%" stopColor="#6366F1" stopOpacity={0} />
+                          <stop offset="5%" stopColor="#0EA5E9" stopOpacity={0.3} />
+                          <stop offset="95%" stopColor="#0EA5E9" stopOpacity={0} />
                         </linearGradient>
                         <linearGradient id="repliesGrad" x1="0" y1="0" x2="0" y2="1">
                           <stop offset="5%" stopColor="#10B981" stopOpacity={0.3} />
@@ -320,7 +325,7 @@ export default function DashboardPage() {
                           borderRadius: '12px',
                         }}
                       />
-                      <Area type="monotone" dataKey="reviews" stroke="#6366F1" fill="url(#reviewsGrad)" strokeWidth={2} />
+                      <Area type="monotone" dataKey="reviews" stroke="#0EA5E9" fill="url(#reviewsGrad)" strokeWidth={2} />
                       <Area type="monotone" dataKey="replies" stroke="#10B981" fill="url(#repliesGrad)" strokeWidth={2} />
                     </AreaChart>
                   </ResponsiveContainer>
@@ -371,6 +376,46 @@ export default function DashboardPage() {
                 Array.from({ length: 5 }).map((_, i) => (
                   <Skeleton key={i} className="h-16 w-full rounded-xl" />
                 ))
+              )}
+            </CardContent>
+          </Card>
+
+          <Card glass>
+            <CardHeader>
+              <CardTitle className="text-base flex items-center justify-between">
+                <span className="flex items-center gap-2">
+                  <Bot className="h-4 w-4" />
+                  Agent Folder
+                </span>
+                <Link href="/agent">
+                  <Button variant="outline" size="sm">Open Agent</Button>
+                </Link>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="mb-3 flex items-center gap-3 rounded-lg border bg-muted/20 p-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-sky-100 dark:bg-sky-950">
+                  <Folder className="h-5 w-5 text-sky-600 dark:text-sky-400" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-foreground">data/agent/</p>
+                  <p className="text-xs text-muted-foreground truncate">
+                    {folderData?.file_count ?? 0} files &middot; {folderData?.size ?? '0 B'}
+                  </p>
+                </div>
+              </div>
+              {folderData?.files?.length > 0 && (
+                <div className="space-y-1">
+                  {folderData.files.slice(0, 3).map((file: string) => (
+                    <div key={file} className="flex items-center gap-2 rounded-md bg-muted/10 px-3 py-1.5">
+                      <FileText className="h-3 w-3 text-muted-foreground" />
+                      <span className="text-xs text-foreground">{file}</span>
+                    </div>
+                  ))}
+                  {folderData.files.length > 3 && (
+                    <p className="text-xs text-muted-foreground pl-7">+{folderData.files.length - 3} more</p>
+                  )}
+                </div>
               )}
             </CardContent>
           </Card>

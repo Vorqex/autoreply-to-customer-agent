@@ -123,6 +123,25 @@ async def verify_mfa(body: MFAVerifyRequest, current_user: User = Depends(get_cu
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="An unexpected error occurred")
 
 
+@router.get("/me", response_model=SuccessResponse)
+async def get_current_user_profile(
+    current_user: User = Depends(get_current_user),
+):
+    return SuccessResponse(
+        message="User retrieved",
+        data={
+            "id": str(current_user.id),
+            "email": current_user.email,
+            "full_name": current_user.full_name,
+            "is_active": current_user.is_active,
+            "is_verified": current_user.is_verified,
+            "is_superuser": current_user.is_superuser,
+            "business_id": str(current_user.business_id) if current_user.business_id else None,
+            "created_at": current_user.created_at.isoformat() if current_user.created_at else None,
+        },
+    )
+
+
 @router.post("/refresh", response_model=SuccessResponse)
 async def refresh_token(body: dict, db: AsyncSession = Depends(get_db)):
     refresh_token_str = body.get("refresh_token")

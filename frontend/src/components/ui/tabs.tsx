@@ -8,7 +8,7 @@ interface TabsProps {
   defaultValue: string
   value?: string
   onValueChange?: (value: string) => void
-  children: React.ReactNode
+  children: React.ReactNode | ((props: { activeValue: string; onValueChange: (val: string) => void }) => React.ReactNode)
   className?: string
 }
 

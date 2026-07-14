@@ -22,7 +22,11 @@ export const useAuthStore = create<AuthState>((set) => ({
     const res = await api.login(email, password)
     setToken(res.access_token)
     setRefreshToken(res.refresh_token)
-    set({ user: res.user, isAuthenticated: true, isLoading: false })
+    set({
+      user: { id: res.user_id, email } as User,
+      isAuthenticated: true,
+      isLoading: false,
+    })
   },
   logout: () => {
     removeToken()

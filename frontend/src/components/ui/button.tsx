@@ -11,7 +11,7 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        default: 'bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg shadow-indigo-500/20',
+        default: 'bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg shadow-sky-500/20',
         destructive: 'bg-destructive text-destructive-foreground hover:bg-destructive/90',
         outline: 'border border-input bg-background hover:bg-accent hover:text-accent-foreground',
         secondary: 'bg-secondary text-secondary-foreground hover:bg-secondary/80',
@@ -109,7 +109,7 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
             </motion.span>
           )}
         </AnimatePresence>
-        <div className="pointer-events-none absolute inset-0 rounded-xl ring-2 ring-transparent focus-visible:ring-indigo-400/50 focus-visible:ring-offset-2" />
+        <div className="pointer-events-none absolute inset-0 rounded-xl ring-2 ring-transparent focus-visible:ring-sky-400/50 focus-visible:ring-offset-2" />
       </motion.button>
     )
   }

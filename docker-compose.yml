@@ -1,0 +1,165 @@
+version: "3.9"
+
+x-logging: &default-logging
+  driver: "json-file"
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+x-healthcheck-common: &healthcheck-common
+  interval: 30s
+  timeout: 10s
+  retries: 5
+  start_period: 40s
+
+networks:
+  autoreply-network:
+    driver: bridge
+
+volumes:
+  postgres-data:
+    driver: local
+  redis-data:
+    driver: local
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: autoreply-postgres
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-autoreply}
+      POSTGRES_USER: ${POSTGRES_USER:-autoreply}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-autoreply_secret}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-autoreply} -d ${POSTGRES_DB:-autoreply}"]
+      <<: *healthcheck-common
+    logging: *default-logging
+    networks:
+      - autoreply-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: autoreply-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      <<: *healthcheck-common
+    logging: *default-logging
+    networks:
+      - autoreply-network
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: autoreply-backend
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    env_file:
+      - ./backend/.env
+    volumes:
+      - ./backend:/app
+      - /app/__pycache__/
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "curl",
+          "--fail",
+          "http://localhost:8000/api/v1/health",
+          "||",
+          "exit",
+          "1",
+        ]
+      <<: *healthcheck-common
+    logging: *default-logging
+    networks:
+      - autoreply-network
+
+  celery-worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: autoreply-celery-worker
+    restart: unless-stopped
+    command: celery -A app.workers.celery_app worker --loglevel=info
+    depends_on:
+      backend:
+        condition: service_started
+      redis:
+        condition: service_healthy
+    env_file:
+      - ./backend/.env
+    volumes:
+      - ./backend:/app
+      - /app/__pycache__/
+    logging: *default-logging
+    networks:
+      - autoreply-network
+
+  celery-beat:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: autoreply-celery-beat
+    restart: unless-stopped
+    command: celery -A app.workers.celery_app beat --loglevel=info
+    depends_on:
+      redis:
+        condition: service_healthy
+    env_file:
+      - ./backend/.env
+    volumes:
+      - ./backend:/app
+      - /app/__pycache__/
+    logging: *default-logging
+    networks:
+      - autoreply-network
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: autoreply-frontend
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    env_file:
+      - ./frontend/.env
+    logging: *default-logging
+    networks:
+      - autoreply-network
+
+  nginx:
+    image: nginx:alpine
+    container_name: autoreply-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./docker/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./docker/ssl:/etc/nginx/ssl:ro
+    depends_on:
+      - backend
+      - frontend
+    logging: *default-logging
+    networks:
+      - autoreply-network

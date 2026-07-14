@@ -61,8 +61,8 @@ export function ActivityChart({ data, loading, className }: ActivityChartProps) 
         <AreaChart data={data} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
           <defs>
             <linearGradient id="reviewsGrad" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor="#6366F1" stopOpacity={0.3} />
-              <stop offset="95%" stopColor="#6366F1" stopOpacity={0} />
+              <stop offset="5%" stopColor="#0EA5E9" stopOpacity={0.3} />
+              <stop offset="95%" stopColor="#0EA5E9" stopOpacity={0} />
             </linearGradient>
             <linearGradient id="repliesGrad" x1="0" y1="0" x2="0" y2="1">
               <stop offset="5%" stopColor="#10B981" stopOpacity={0.3} />
@@ -96,7 +96,7 @@ export function ActivityChart({ data, loading, className }: ActivityChartProps) 
             type="monotone"
             dataKey="reviews"
             name="Reviews"
-            stroke="#6366F1"
+            stroke="#0EA5E9"
             strokeWidth={2}
             fill="url(#reviewsGrad)"
           />

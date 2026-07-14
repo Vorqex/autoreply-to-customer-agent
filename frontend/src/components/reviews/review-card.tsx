@@ -44,7 +44,7 @@ const platformIcons: Record<string, string> = {
 
 const platformColors: Record<string, string> = {
   google: 'bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300 border-blue-200 dark:border-blue-800',
-  facebook: 'bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800',
+  facebook: 'bg-sky-100 text-sky-700 dark:bg-sky-950 dark:text-sky-300 border-sky-200 dark:border-sky-800',
   trustpilot: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800',
   yelp: 'bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300 border-red-200 dark:border-red-800',
   shopify: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800',
@@ -53,7 +53,7 @@ const platformColors: Record<string, string> = {
 
 const platformBorders: Record<string, string> = {
   google: 'border-l-blue-500',
-  facebook: 'border-l-indigo-500',
+  facebook: 'border-l-sky-500',
   trustpilot: 'border-l-emerald-500',
   yelp: 'border-l-red-500',
   shopify: 'border-l-emerald-500',
@@ -130,7 +130,7 @@ export function ReviewCard({ review, onGenerate, onFlag, onView, loading, select
           'group relative transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5 border-l-4 outline-none',
           platformBorders[r.platform] || 'border-l-border',
           selected && 'ring-2 ring-primary ring-offset-2',
-          focused && 'ring-2 ring-indigo-400 ring-offset-2'
+          focused && 'ring-2 ring-sky-400 ring-offset-2'
         )}
       >
         <CardContent className="p-5">

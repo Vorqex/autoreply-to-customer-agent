@@ -82,7 +82,7 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
           {focused && (
             <motion.div
               layoutId="input-glow"
-              className="pointer-events-none absolute -inset-0.5 rounded-xl bg-gradient-to-r from-indigo-500 via-purple-500 to-indigo-500 opacity-20 blur-sm"
+              className="pointer-events-none absolute -inset-0.5 rounded-xl bg-gradient-to-r from-sky-500 via-emerald-500 to-sky-500 opacity-20 blur-sm"
               initial={{ opacity: 0 }}
               animate={{ opacity: 0.2 }}
               exit={{ opacity: 0 }}
